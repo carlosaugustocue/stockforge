@@ -4,6 +4,16 @@ namespace App\Providers;
 
 use App\Modules\Auth\Repositories\Contracts\UserRepositoryInterface;
 use App\Modules\Auth\Repositories\UserRepository;
+use App\Modules\Catalogo\Repositories\Contracts\MateriaPrimaRepositoryInterface;
+use App\Modules\Catalogo\Repositories\Contracts\ProductoTerminadoRepositoryInterface;
+use App\Modules\Catalogo\Repositories\Contracts\BodegaRepositoryInterface;
+use App\Modules\Catalogo\Repositories\Contracts\PresentacionRepositoryInterface;
+use App\Modules\Catalogo\Repositories\Contracts\RelacionMpPtRepositoryInterface;
+use App\Modules\Catalogo\Repositories\MateriaPrimaRepository;
+use App\Modules\Catalogo\Repositories\ProductoTerminadoRepository;
+use App\Modules\Catalogo\Repositories\BodegaRepository;
+use App\Modules\Catalogo\Repositories\PresentacionRepository;
+use App\Modules\Catalogo\Repositories\RelacionMpPtRepository;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,10 +30,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(
-            UserRepositoryInterface::class,
-            UserRepository::class
-        );
+        $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(MateriaPrimaRepositoryInterface::class, MateriaPrimaRepository::class);
+        $this->app->bind(ProductoTerminadoRepositoryInterface::class, ProductoTerminadoRepository::class);
+        $this->app->bind(BodegaRepositoryInterface::class, BodegaRepository::class);
+        $this->app->bind(PresentacionRepositoryInterface::class, PresentacionRepository::class);
+        $this->app->bind(RelacionMpPtRepositoryInterface::class, RelacionMpPtRepository::class);
     }
 
     /**
