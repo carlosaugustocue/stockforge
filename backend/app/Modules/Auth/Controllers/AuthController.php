@@ -5,6 +5,8 @@ namespace App\Modules\Auth\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Auth\Requests\CreateUserRequest;
 use App\Modules\Auth\Requests\LoginRequest;
+use App\Modules\Auth\Requests\UpdateUserRequest;
+use App\Models\Role;
 use App\Modules\Auth\Resources\UserResource;
 use App\Modules\Auth\Services\AuthService;
 use App\Shared\Traits\ApiResponseTrait;
@@ -129,5 +131,71 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al crear el usuario.', 500);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // GET /api/auth/usuarios
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lista todos los usuarios del sistema con su rol asignado.
+     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
+     *
+     * @return JsonResponse HTTP 200 con la colección de usuarios
+     */
+    public function listarUsuarios(): JsonResponse
+    {
+        $usuarios = $this->authService->listarUsuarios();
+
+        return $this->successResponse(
+            UserResource::collection($usuarios),
+            'Listado de usuarios.'
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // PATCH /api/auth/usuarios/{id}
+    // -----------------------------------------------------------------------
+
+    /**
+     * Actualiza los datos de un usuario existente (PATCH semántico).
+     * Permite cambiar nombre, email, rol y estado activo.
+     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
+     *
+     * @return JsonResponse HTTP 200 con el usuario actualizado | HTTP 404 | HTTP 500
+     */
+    public function actualizarUsuario(UpdateUserRequest $request, int $id): JsonResponse
+    {
+        try {
+            $usuario = $this->authService->actualizarUsuario($id, $request->validated());
+
+            return $this->successResponse(
+                new UserResource($usuario),
+                'Usuario actualizado exitosamente.'
+            );
+
+        } catch (\Exception $e) {
+            $code = $e->getCode();
+            $httpCode = (is_int($code) && $code >= 100 && $code < 600) ? $code : 500;
+            return $this->errorResponse($e->getMessage(), $httpCode);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // GET /api/roles
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lista todos los roles disponibles en el sistema.
+     * Usado por el frontend para poblar el selector de rol al crear/editar usuarios.
+     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
+     *
+     * @return JsonResponse HTTP 200 con la lista de roles
+     */
+    public function listarRoles(): JsonResponse
+    {
+        $roles = Role::select('id', 'nombre', 'descripcion')->orderBy('nombre')->get();
+
+        return $this->successResponse($roles, 'Listado de roles.');
     }
 }

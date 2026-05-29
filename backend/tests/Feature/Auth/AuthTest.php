@@ -206,3 +206,136 @@ test('test_rol_administrador_puede_crear_usuarios', function () {
         ->assertJsonPath('data.email', 'gerente.nuevo@inventario.test')
         ->assertJsonPath('data.rol', Role::GERENCIA);
 });
+
+// -----------------------------------------------------------------------
+// Test 9: Administrador puede listar todos los usuarios — RFAUT02
+// -----------------------------------------------------------------------
+test('test_administrador_puede_listar_usuarios', function () {
+    $admin    = crearUsuario(Role::ADMINISTRADOR);
+    $gerente  = crearUsuario(Role::GERENCIA);
+    $encargado = crearUsuario(Role::ENCARGADO_INVENTARIOS);
+    $token    = $admin->createToken('api-token')->plainTextToken;
+
+    $response = $this->withToken($token)
+        ->getJson('/api/v1/auth/usuarios');
+
+    $response->assertStatus(200)
+        ->assertJson(['success' => true])
+        ->assertJsonCount(3, 'data'); // admin + gerente + encargado
+});
+
+// -----------------------------------------------------------------------
+// Test 10: Rol no-administrador no puede listar usuarios — RNFSEC-04
+// -----------------------------------------------------------------------
+test('test_no_administrador_no_puede_listar_usuarios', function () {
+    $gerente = crearUsuario(Role::GERENCIA);
+    $token   = $gerente->createToken('api-token')->plainTextToken;
+
+    $this->withToken($token)
+        ->getJson('/api/v1/auth/usuarios')
+        ->assertStatus(403);
+});
+
+// -----------------------------------------------------------------------
+// Test 11: Sin token no puede listar usuarios — 401
+// -----------------------------------------------------------------------
+test('test_sin_token_no_puede_listar_usuarios', function () {
+    $this->getJson('/api/v1/auth/usuarios')
+        ->assertStatus(401);
+});
+
+// -----------------------------------------------------------------------
+// Test 12: Administrador puede actualizar el rol de un usuario — RFAUT02
+// -----------------------------------------------------------------------
+test('test_administrador_puede_actualizar_rol_de_usuario', function () {
+    $admin    = crearUsuario(Role::ADMINISTRADOR);
+    $encargado = crearUsuario(Role::ENCARGADO_INVENTARIOS);
+    $token    = $admin->createToken('api-token')->plainTextToken;
+
+    $rolJefe = Role::where('nombre', Role::JEFE_PRODUCCION)->first();
+
+    $response = $this->withToken($token)
+        ->patchJson("/api/v1/auth/usuarios/{$encargado->id}", [
+            'role_id' => $rolJefe->id,
+        ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('data.rol', Role::JEFE_PRODUCCION);
+});
+
+// -----------------------------------------------------------------------
+// Test 13: Desactivar usuario revoca sus tokens activos — RNFSEC-04
+// -----------------------------------------------------------------------
+test('test_desactivar_usuario_revoca_sus_tokens', function () {
+    $admin    = crearUsuario(Role::ADMINISTRADOR);
+    $encargado = crearUsuario(Role::ENCARGADO_INVENTARIOS);
+    $tokenAdmin     = $admin->createToken('api-token')->plainTextToken;
+    $tokenEncargado = $encargado->createToken('api-token')->plainTextToken;
+
+    // Verificar que el encargado tiene un token activo
+    expect($encargado->tokens()->count())->toBe(1);
+
+    // El admin desactiva al encargado
+    $this->withToken($tokenAdmin)
+        ->patchJson("/api/v1/auth/usuarios/{$encargado->id}", ['activo' => false])
+        ->assertStatus(200)
+        ->assertJsonPath('data.activo', false);
+
+    // Los tokens del encargado deben haber sido revocados
+    expect($encargado->tokens()->count())->toBe(0);
+});
+
+// -----------------------------------------------------------------------
+// Test 14: Actualizar usuario inexistente retorna 404
+// -----------------------------------------------------------------------
+test('test_actualizar_usuario_inexistente_retorna_404', function () {
+    $admin = crearUsuario(Role::ADMINISTRADOR);
+    $token = $admin->createToken('api-token')->plainTextToken;
+
+    $this->withToken($token)
+        ->patchJson('/api/v1/auth/usuarios/99999', ['activo' => false])
+        ->assertStatus(404);
+});
+
+// -----------------------------------------------------------------------
+// Test 15: Administrador puede listar los roles disponibles — RFAUT02
+// -----------------------------------------------------------------------
+test('test_administrador_puede_listar_roles', function () {
+    $admin = crearUsuario(Role::ADMINISTRADOR);
+    $token = $admin->createToken('api-token')->plainTextToken;
+
+    $response = $this->withToken($token)
+        ->getJson('/api/v1/roles');
+
+    $response->assertStatus(200)
+        ->assertJson(['success' => true])
+        ->assertJsonCount(4, 'data'); // 4 roles del sistema
+});
+
+// -----------------------------------------------------------------------
+// Test 16: Rol no-administrador no puede listar roles — RNFSEC-04
+// -----------------------------------------------------------------------
+test('test_no_administrador_no_puede_listar_roles', function () {
+    $jefe  = crearUsuario(Role::JEFE_PRODUCCION);
+    $token = $jefe->createToken('api-token')->plainTextToken;
+
+    $this->withToken($token)
+        ->getJson('/api/v1/roles')
+        ->assertStatus(403);
+});
+
+// -----------------------------------------------------------------------
+// Test 17: bloqueado_hasta no aparece en respuesta JSON — RNFSEC-01
+// -----------------------------------------------------------------------
+test('test_bloqueado_hasta_no_se_expone_en_respuesta_json', function () {
+    $admin = crearUsuario(Role::ADMINISTRADOR);
+    $token = $admin->createToken('api-token')->plainTextToken;
+
+    $response = $this->withToken($token)
+        ->getJson('/api/v1/auth/me');
+
+    $response->assertStatus(200);
+
+    // El campo bloqueado_hasta nunca debe viajar al cliente
+    expect($response->json('data'))->not->toHaveKey('bloqueado_hasta');
+});
