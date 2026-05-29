@@ -18,6 +18,22 @@ use Carbon\Carbon;
 class UserRepository implements UserRepositoryInterface
 {
     /**
+     * Retorna todos los usuarios con su relación de rol cargada.
+     */
+    public function all(): \Illuminate\Database\Eloquent\Collection
+    {
+        return User::with('role')->orderBy('name')->get();
+    }
+
+    /**
+     * Busca un usuario por su ID con el rol cargado.
+     */
+    public function findById(int $id): ?User
+    {
+        return User::with('role')->find($id);
+    }
+
+    /**
      * Busca un usuario por email usando Eloquent.
      */
     public function findByEmail(string $email): ?User

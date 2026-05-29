@@ -154,6 +154,61 @@ class AuthService
     }
 
     // -----------------------------------------------------------------------
+    // Método: listarUsuarios
+    // -----------------------------------------------------------------------
+
+    /**
+     * Retorna todos los usuarios del sistema con su rol.
+     * Solo accesible por administrador (restricción en middleware).
+     */
+    public function listarUsuarios(): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->userRepository->all();
+    }
+
+    // -----------------------------------------------------------------------
+    // Método: obtenerUsuario
+    // -----------------------------------------------------------------------
+
+    /**
+     * Busca un usuario por ID.
+     * Lanza excepción 404 si no existe.
+     */
+    public function obtenerUsuario(int $id): User
+    {
+        $user = $this->userRepository->findById($id);
+
+        if (!$user) {
+            throw new \Exception('Usuario no encontrado.', 404);
+        }
+
+        return $user;
+    }
+
+    // -----------------------------------------------------------------------
+    // Método: actualizarUsuario
+    // -----------------------------------------------------------------------
+
+    /**
+     * Actualiza los datos de un usuario existente (PATCH semántico).
+     * Solo se modifican los campos presentes en $data.
+     *
+     * Si se desactiva un usuario activo, se revocan todos sus tokens
+     * para cerrar cualquier sesión activa inmediatamente.
+     */
+    public function actualizarUsuario(int $id, array $data): User
+    {
+        $user = $this->obtenerUsuario($id);
+
+        // Si se está desactivando un usuario activo, cerrar sus sesiones
+        if (isset($data['activo']) && $data['activo'] === false && $user->activo) {
+            $user->tokens()->delete();
+        }
+
+        return $this->userRepository->update($user, $data);
+    }
+
+    // -----------------------------------------------------------------------
     // Métodos privados
     // -----------------------------------------------------------------------
 

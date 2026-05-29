@@ -38,7 +38,22 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
 
     // Rutas exclusivas del ADMINISTRADOR (RFAUT02 - RBAC)
     Route::middleware('role:administrador')->group(function () {
-        // POST /api/v1/auth/usuarios
+        // POST  /api/v1/auth/usuarios        → crear usuario
         Route::post('/usuarios', [AuthController::class, 'crearUsuario']);
+
+        // GET   /api/v1/auth/usuarios        → listar usuarios
+        Route::get('/usuarios', [AuthController::class, 'listarUsuarios']);
+
+        // PATCH /api/v1/auth/usuarios/{id}   → actualizar usuario
+        Route::patch('/usuarios/{id}', [AuthController::class, 'actualizarUsuario']);
+
     });
+});
+
+// -------------------------------------------------------------------------
+// Rutas de ROLES — fuera del prefijo /auth para URL limpia /api/v1/roles
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'role:administrador'])->group(function () {
+    // GET /api/v1/roles → listar roles disponibles (para selector en frontend)
+    Route::get('/roles', [AuthController::class, 'listarRoles']);
 });

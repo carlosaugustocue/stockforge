@@ -46,6 +46,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'intentos_fallidos', // El cliente no necesita saber cuántos intentos lleva
+        'bloqueado_hasta',   // No exponer la fecha de bloqueo en respuestas JSON (RNFSEC-01)
     ];
 
     /**
