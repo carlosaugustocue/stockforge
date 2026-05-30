@@ -6,6 +6,7 @@ use App\Modules\Catalogo\Controllers\MateriaPrimaController;
 use App\Modules\Catalogo\Controllers\PresentacionController;
 use App\Modules\Catalogo\Controllers\ProductoTerminadoController;
 use App\Modules\Permisos\Controllers\PermissionController;
+use App\Modules\Inventario\Controllers\InventarioController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
 use Illuminate\Support\Facades\Route;
 
@@ -108,6 +109,15 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.escribir'])->group(functi
 
     Route::patch('/presentaciones/{id}',  [PresentacionController::class, 'update']);
     Route::delete('/presentaciones/{id}', [PresentacionController::class, 'destroy']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO INVENTARIO — Consultas de stock y alertas (RFINV01 / HU-002)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(function () {
+    Route::get('/inventario/stock/mp',       [InventarioController::class, 'stockMp']);
+    Route::get('/inventario/stock/mp/{id}',  [InventarioController::class, 'stockMpPorId']);
+    Route::get('/inventario/alertas',        [InventarioController::class, 'alertas']);
 });
 
 // -------------------------------------------------------------------------
