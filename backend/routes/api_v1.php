@@ -6,6 +6,7 @@ use App\Modules\Catalogo\Controllers\MateriaPrimaController;
 use App\Modules\Catalogo\Controllers\PresentacionController;
 use App\Modules\Catalogo\Controllers\ProductoTerminadoController;
 use App\Modules\Permisos\Controllers\PermissionController;
+use App\Modules\Recepciones\Controllers\RecepcionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -107,4 +108,21 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.escribir'])->group(functi
 
     Route::patch('/presentaciones/{id}',  [PresentacionController::class, 'update']);
     Route::delete('/presentaciones/{id}', [PresentacionController::class, 'destroy']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO RECEPCIONES — Órdenes de pedido y entrada de materias primas (RFREC)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:recepciones.leer'])->group(function () {
+    // Rutas específicas ANTES que las de parámetro wildcard para evitar colisiones
+    Route::get('/recepciones/ordenes',                       [RecepcionController::class, 'listarOrdenes']);
+    Route::get('/recepciones/ordenes/{id}',                  [RecepcionController::class, 'verOrden']);
+    Route::get('/recepciones',                               [RecepcionController::class, 'listarRecepciones']);
+    Route::get('/recepciones/{id}',                          [RecepcionController::class, 'verRecepcion']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:recepciones.escribir'])->group(function () {
+    Route::post('/recepciones/ordenes',                      [RecepcionController::class, 'crearOrden']);
+    Route::patch('/recepciones/ordenes/{id}',                [RecepcionController::class, 'actualizarOrden']);
+    Route::post('/recepciones/ordenes/{id}/recepciones',     [RecepcionController::class, 'registrarRecepcion']);
 });

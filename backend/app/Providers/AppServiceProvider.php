@@ -7,6 +7,8 @@ use App\Modules\Auth\Repositories\UserRepository;
 use App\Modules\Catalogo\Repositories\Contracts\MateriaPrimaRepositoryInterface;
 use App\Modules\Permisos\Repositories\Contracts\PermissionRepositoryInterface;
 use App\Modules\Permisos\Repositories\PermissionRepository;
+use App\Modules\Recepciones\Repositories\Contracts\RecepcionRepositoryInterface;
+use App\Modules\Recepciones\Repositories\RecepcionRepository;
 use App\Modules\Catalogo\Repositories\Contracts\ProductoTerminadoRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\BodegaRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\PresentacionRepositoryInterface;
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PresentacionRepositoryInterface::class, PresentacionRepository::class);
         $this->app->bind(RelacionMpPtRepositoryInterface::class, RelacionMpPtRepository::class);
         $this->app->bind(PermissionRepositoryInterface::class, PermissionRepository::class);
+        $this->app->bind(RecepcionRepositoryInterface::class, RecepcionRepository::class);
     }
 
     /**
