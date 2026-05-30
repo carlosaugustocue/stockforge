@@ -15,6 +15,8 @@ use App\Modules\Recepciones\Repositories\Contracts\RecepcionRepositoryInterface;
 use App\Modules\Recepciones\Repositories\RecepcionRepository;
 use App\Modules\Despacho\Repositories\Contracts\DespachoRepositoryInterface;
 use App\Modules\Despacho\Repositories\DespachoRepository;
+use App\Modules\Reportes\Repositories\Contracts\ReportesRepositoryInterface;
+use App\Modules\Reportes\Repositories\ReportesRepository;
 use App\Modules\Catalogo\Repositories\Contracts\ProductoTerminadoRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\BodegaRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\PresentacionRepositoryInterface;
@@ -51,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProduccionRepositoryInterface::class, ProduccionRepository::class);
         $this->app->bind(RecepcionRepositoryInterface::class, RecepcionRepository::class);
         $this->app->bind(DespachoRepositoryInterface::class, DespachoRepository::class);
+        $this->app->bind(ReportesRepositoryInterface::class, ReportesRepository::class);
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Modules\Inventario\Controllers\InventarioController;
 use App\Modules\Produccion\Controllers\ProduccionController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
 use App\Modules\Despacho\Controllers\DespachoController;
+use App\Modules\Reportes\Controllers\ReportesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -164,4 +165,15 @@ Route::middleware(['auth:sanctum', 'permission:despachos.leer'])->group(function
 
 Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(function () {
     Route::post('/despachos', [DespachoController::class, 'registrar']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO REPORTES — KPIs y reportes de gestión (reportes.leer)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:reportes.leer'])->group(function () {
+    Route::get('/reportes/kpis',        [ReportesController::class, 'kpis']);
+    Route::get('/reportes/produccion',  [ReportesController::class, 'produccion']);
+    Route::get('/reportes/despachos',   [ReportesController::class, 'despachos']);
+    Route::get('/reportes/movimientos', [ReportesController::class, 'movimientos']);
+    Route::get('/reportes/stock-pt',    [ReportesController::class, 'stockPt']);
 });
