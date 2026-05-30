@@ -2,12 +2,13 @@
 
 namespace App\Modules\Inventario\Repositories\Contracts;
 
+use App\Models\LoteMateriaPrima;
 use App\Models\MateriaPrima;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Contrato del repositorio de inventario.
- * Operaciones de consulta de stock y alertas (solo lectura).
+ * Operaciones de consulta de stock, alertas y traslados de MP.
  */
 interface InventarioRepositoryInterface
 {
@@ -19,4 +20,7 @@ interface InventarioRepositoryInterface
 
     /** MP activas cuyo stock total es menor al punto de reorden. */
     public function materiasprimasBajoReorden(): Collection;
+
+    /** Lote de MP por ID con bodega cargada. */
+    public function lotePorId(int $id): ?LoteMateriaPrima;
 }

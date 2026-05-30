@@ -123,6 +123,10 @@ Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(functio
     Route::get('/inventario/alertas',        [InventarioController::class, 'alertas']);
 });
 
+Route::middleware(['auth:sanctum', 'permission:inventario.escribir'])->group(function () {
+    Route::post('/inventario/traslados', [InventarioController::class, 'trasladar']);
+});
+
 // -------------------------------------------------------------------------
 // MÓDULO PRODUCCIÓN — Ciclo productivo completo (RFPROD01-05)
 // -------------------------------------------------------------------------

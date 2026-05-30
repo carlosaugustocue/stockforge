@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventario\Repositories;
 
+use App\Models\LoteMateriaPrima;
 use App\Models\MateriaPrima;
 use App\Modules\Inventario\Repositories\Contracts\InventarioRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -54,5 +55,10 @@ class InventarioRepository implements InventarioRepositoryInterface
                 $mp->lotes->sum('cantidad_actual') < (float) $mp->punto_reorden
             )
             ->values();
+    }
+
+    public function lotePorId(int $id): ?LoteMateriaPrima
+    {
+        return LoteMateriaPrima::with(['bodega', 'materiaPrima'])->find($id);
     }
 }

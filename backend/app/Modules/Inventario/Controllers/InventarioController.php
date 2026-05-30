@@ -3,6 +3,7 @@
 namespace App\Modules\Inventario\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Inventario\Requests\TrasladoMpRequest;
 use App\Modules\Inventario\Services\InventarioService;
 use App\Shared\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,8 @@ use Illuminate\Http\JsonResponse;
  *   GET /inventario/stock/mp/{id}     → stock de una MP específica por bodega
  *   GET /inventario/alertas           → MP por debajo del punto de reorden
  *
- * Acceso: inventario.leer (Gerencia, Jefe de Producción, Encargado — HU-002)
+ * Acceso lectura:  inventario.leer    (Gerencia, Jefe de Producción, Encargado — HU-002)
+ * Acceso escritura: inventario.escribir (Jefe de Producción, Encargado — RFINV04)
  */
 class InventarioController extends Controller
 {
@@ -46,5 +48,25 @@ class InventarioController extends Controller
     {
         $alertas = $this->service->alertasBajoReorden();
         return $this->successResponse($alertas, 'Alertas de stock bajo reorden consultadas.');
+    }
+
+    public function trasladar(TrasladoMpRequest $request): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+            $resultado = $this->service->trasladar(
+                $data['lote_id'],
+                $data['bodega_destino_id'],
+                (float) $data['cantidad'],
+                $request->user()->id,
+            );
+            return $this->createdResponse($resultado, 'Traslado de materia prima registrado correctamente.');
+        } catch (\RuntimeException $e) {
+            $detalle = json_decode($e->getMessage(), true);
+            $mensaje = $detalle
+                ? "Stock insuficiente. Disponible: {$detalle['disponible']}, solicitado: {$detalle['solicitada']}."
+                : $e->getMessage();
+            return $this->errorResponse($mensaje, 422, $detalle ?? []);
+        }
     }
 }
