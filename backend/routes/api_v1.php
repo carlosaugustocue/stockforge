@@ -181,3 +181,10 @@ Route::middleware(['auth:sanctum', 'permission:reportes.leer'])->group(function 
     Route::get('/reportes/movimientos', [ReportesController::class, 'movimientos']);
     Route::get('/reportes/stock-pt',    [ReportesController::class, 'stockPt']);
 });
+
+// -------------------------------------------------------------------------
+// MÓDULO BITÁCORA — Auditoría de accesos (solo administrador)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'role:administrador'])->group(function () {
+    Route::get('/bitacora', [\App\Modules\Bitacora\Controllers\BitacoraController::class, 'index']);
+});
