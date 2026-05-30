@@ -7,6 +7,7 @@ use App\Modules\Catalogo\Controllers\PresentacionController;
 use App\Modules\Catalogo\Controllers\ProductoTerminadoController;
 use App\Modules\Permisos\Controllers\PermissionController;
 use App\Modules\Inventario\Controllers\InventarioController;
+use App\Modules\Produccion\Controllers\ProduccionController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
 use Illuminate\Support\Facades\Route;
 
@@ -118,6 +119,21 @@ Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(functio
     Route::get('/inventario/stock/mp',       [InventarioController::class, 'stockMp']);
     Route::get('/inventario/stock/mp/{id}',  [InventarioController::class, 'stockMpPorId']);
     Route::get('/inventario/alertas',        [InventarioController::class, 'alertas']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO PRODUCCIÓN — Ciclo productivo completo (RFPROD01-05)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:produccion.leer'])->group(function () {
+    Route::get('/produccion/ordenes',        [ProduccionController::class, 'listarOrdenes']);
+    Route::get('/produccion/ordenes/{id}',   [ProduccionController::class, 'verOrden']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:produccion.escribir'])->group(function () {
+    Route::post('/produccion/ordenes',                          [ProduccionController::class, 'crearOrden']);
+    Route::post('/produccion/ordenes/{id}/ejecutar',            [ProduccionController::class, 'ejecutar']);
+    Route::post('/produccion/ordenes/{id}/traslado-pt',         [ProduccionController::class, 'trasladarPt']);
+    Route::patch('/produccion/ordenes/{id}/anular',             [ProduccionController::class, 'anular']);
 });
 
 // -------------------------------------------------------------------------
