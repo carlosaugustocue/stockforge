@@ -5,15 +5,17 @@ use App\Models\UnidadMedida;
 use App\Models\MateriaPrima;
 use App\Models\ProductoTerminado;
 use App\Models\Bodega;
+use Database\Seeders\BodegaSeeder;
+use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\UnidadMedidaSeeder;
-use Database\Seeders\BodegaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->seed(RoleSeeder::class);
+    $this->seed(PermissionSeeder::class);
     $this->seed(UnidadMedidaSeeder::class);
     $this->seed(BodegaSeeder::class);
 });

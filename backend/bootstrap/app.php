@@ -15,7 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Registro del middleware de roles con el alias 'role'
         // Uso en rutas: ->middleware('role:administrador')
         $middleware->alias([
-            'role' => \App\Shared\Middleware\CheckRole::class,
+            'role'       => \App\Shared\Middleware\CheckRole::class,
+            'permission' => \App\Shared\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

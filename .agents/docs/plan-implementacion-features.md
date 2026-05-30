@@ -12,7 +12,8 @@ El backend vive en `backend/` siguiendo arquitectura modular SOLID (`app/Modules
 El frontend (Next.js) es repositorio separado — los agentes backend NO tocan frontend.
 
 **Fase 0 (Auth + RBAC):** ✅ Completa — mergada a `main` y `develop`.
-**Fase 1 (Núcleo transaccional):** 🔄 En curso — Corte 2, ~hasta 6-jun.
+**Fase 0.5 (Matriz de Permisos BD):** ✅ Completa — mergada a `develop` en rama `feature/permisos-matrix`.
+**Fase 1 (Núcleo transaccional):** 🔄 En curso — Corte 2, ~hasta 6-jun. Catálogo Maestro ✅.
 **Fase 2 (Inteligencia + despliegue):** ⏳ Pendiente — Corte 3A, ~7–18-jun.
 **Fase 3 (Validación + piloto):** ⏳ Pendiente — Corte 3B, ~19–26-jun.
 
@@ -24,9 +25,30 @@ El frontend (Next.js) es repositorio separado — los agentes backend NO tocan f
 
 ---
 
-### Feature 1: Catálogo Maestro
+### Feature 0.5: Matriz de Permisos Dinámica ✅
+
+- **Rama:** `feature/permisos-matrix`
+- **Estado:** ✅ Implementada y mergada a `develop`
+- **Descripción:** Sistema de control de acceso basado en permisos almacenados en base de datos. Reemplaza los checks hardcodeados de rol en las rutas con un middleware dinámico (`CheckPermission`) que consulta la tabla `permissions` asociada a roles via `role_permissions`, con caché de 60 minutos por rol. Permite modificar la matriz de permisos desde la API sin redeploy.
+- **Historias de usuario / RFs:** HU-002, RNFSEC-04
+- **Cambios backend:**
+  - Migraciones: tabla `permissions` (id, nombre slug, descripcion, recurso, accion) + tabla pivot `role_permissions`
+  - Modelos: `Permission` (BelongsToMany Role), actualización de `Role` (BelongsToMany Permission)
+  - Middleware: `CheckPermission` — alias `permission` registrado en `bootstrap/app.php`; cachea permisos por rol; invalida caché al modificar `role_permissions`
+  - Módulo `app/Modules/Permisos/`: Controller, Service, Repository (interface + impl), Resource
+  - Seeder: `PermissionSeeder` con la matriz completa inicial (18 permisos, asignados a los 4 roles)
+  - Refactor `routes/api_v1.php`: endpoints operativos protegidos con `permission:recurso.accion` en lugar de `role:gerencia,encargado_inventarios`
+  - Endpoints: `GET /permisos`, `GET /roles/{id}/permisos`, `POST /roles/{id}/permisos`, `DELETE /roles/{id}/permisos/{permiso_id}` — solo para `role:administrador`
+  - Tests en `tests/Feature/Permisos/PermisosTest.php`
+- **Dependencias:** Feature 0 (Auth/RBAC) ✅
+- **Orden de implementación:** #0.5 — prerrequisito de todas las features operativas
+
+---
+
+### Feature 1: Catálogo Maestro ✅
 
 - **Rama:** `feature/catalogo-maestro`
+- **Estado:** ✅ Implementada y mergada a `develop`
 - **Descripción:** Gestión de las entidades maestras del dominio: materias primas, productos terminados, asociación MP↔PT (qué MP requiere cada PT y en qué cantidad), presentaciones de empaque, bodegas, e importación masiva por Excel/CSV con reporte fila a fila.
 - **Historias de usuario:** HU-004, HU-005, HU-006, HU-007, HU-008
 - **Cambios backend:**
@@ -236,7 +258,8 @@ El frontend (Next.js) es repositorio separado — los agentes backend NO tocan f
 ## Orden recomendado de implementación
 
 ```
-#1  feature/catalogo-maestro          ← Fase 1 · Sin dependencias del dominio
+#0.5 feature/permisos-matrix          ← ✅ Completa · Sin dependencias del dominio
+#1  feature/catalogo-maestro          ← ✅ Completa · Sin dependencias del dominio
 #2  feature/ordenes-pedido            ← Fase 1 · Depende de: #1
 #3  feature/recepcion-mercancia       ← Fase 1 · Depende de: #1, #2
 #4  feature/inventario-lotes          ← Fase 1 · Depende de: #3 (lotes)  ★ CRÍTICO
@@ -253,7 +276,7 @@ El frontend (Next.js) es repositorio separado — los agentes backend NO tocan f
 **Gráfico de dependencias simplificado:**
 
 ```
-[Auth ✅] ──→ [#1 Catálogo] ──→ [#2 Órdenes] ──→ [#3 Recepción] ──→ [#4 Inventario+FEFO ★]
+[Auth ✅] ──→ [#0.5 Permisos ✅] ──→ [#1 Catálogo ✅] ──→ [#2 Órdenes] ──→ [#3 Recepción] ──→ [#4 Inventario+FEFO ★]
                                                                               │
                                                               ┌───────────────┤
                                                               ▼               ▼
