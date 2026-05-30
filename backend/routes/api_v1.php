@@ -9,6 +9,7 @@ use App\Modules\Permisos\Controllers\PermissionController;
 use App\Modules\Inventario\Controllers\InventarioController;
 use App\Modules\Produccion\Controllers\ProduccionController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
+use App\Modules\Despacho\Controllers\DespachoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -151,4 +152,16 @@ Route::middleware(['auth:sanctum', 'permission:recepciones.escribir'])->group(fu
     Route::post('/recepciones/ordenes',                      [RecepcionController::class, 'crearOrden']);
     Route::patch('/recepciones/ordenes/{id}',                [RecepcionController::class, 'actualizarOrden']);
     Route::post('/recepciones/ordenes/{id}/recepciones',     [RecepcionController::class, 'registrarRecepcion']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO DESPACHO — Salida de PT hacia clientes (RFPROD03 / HU-027)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:despachos.leer'])->group(function () {
+    Route::get('/despachos',      [DespachoController::class, 'listarDespachos']);
+    Route::get('/despachos/{id}', [DespachoController::class, 'verDespacho']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(function () {
+    Route::post('/despachos', [DespachoController::class, 'registrar']);
 });
