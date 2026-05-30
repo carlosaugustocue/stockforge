@@ -14,13 +14,16 @@ class DatabaseSeeder extends Seeder
      * Seed the application's database.
      *
      * El orden de ejecución es crítico:
-     * 1. RoleSeeder primero — crea los roles que necesitan los usuarios
-     * 2. UserSeeder segundo — asigna role_id a cada usuario
+     * 1. RoleSeeder primero — crea los roles que necesitan los usuarios y permisos
+     * 2. PermissionSeeder — crea los permisos y los asigna a los roles
+     * 3. UserSeeder — asigna role_id a cada usuario
+     * 4. Seeders de catálogo (sin dependencias entre sí)
      */
     public function run(): void
     {
         $this->call([
             RoleSeeder::class,
+            PermissionSeeder::class,
             UserSeeder::class,
             UnidadMedidaSeeder::class,
             BodegaSeeder::class,

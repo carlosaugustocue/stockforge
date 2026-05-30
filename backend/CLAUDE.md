@@ -39,7 +39,8 @@ backend/
 │   │   └── AppServiceProvider.php          # Bindings interface→implementacion
 │   └── Shared/
 │       ├── Middleware/
-│       │   └── CheckRole.php               # RBAC — middleware 'role:xxx'
+│       │   ├── CheckRole.php               # RBAC estático — middleware 'role:xxx'
+│       │   └── CheckPermission.php         # RBAC dinámico — middleware 'permission:recurso.accion'
 │       └── Traits/
 │           └── ApiResponseTrait.php        # Respuestas JSON estandarizadas
 ├── database/
@@ -142,7 +143,8 @@ Metodos disponibles: `successResponse()`, `errorResponse()`, `createdResponse()`
 - Prefijo base: `/api/v1/`
 - Rutas publicas: solo las estrictamente necesarias (login)
 - Rutas privadas: siempre bajo `middleware('auth:sanctum')`
-- Rutas de rol: `middleware('role:{rol}')` o `middleware('role:{rol1},{rol2}')`
+- Rutas de rol estático: `middleware('role:{rol}')` o `middleware('role:{rol1},{rol2}')` — usado solo para admin y permisos de sistema
+- Rutas de permiso dinámico: `middleware('permission:{recurso}.{accion}')` — verifica en BD via `CheckPermission`; resultado cacheado por rol (60 min)
 - Nomenclatura: sustantivos en plural, snake_case, en espanol si son del dominio
 
 ```php
@@ -176,7 +178,8 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () { /* privad
 - Passwords: siempre `bcrypt()` al crear, `Hash::check()` al verificar. El cast `'hashed'` en el modelo es complementario, no suficiente.
 - Mensajes de error: GENERICOS en autenticacion (no revelar si el email existe o no)
 - Tokens: Sanctum. Un solo token activo por usuario (revocar anteriores en login exitoso)
-- RBAC: usar `CheckRole` middleware con constantes de `Role::`. Nunca comparar strings directos en controllers.
+- RBAC estático: usar `CheckRole` middleware con constantes de `Role::`. Nunca comparar strings directos en controllers.
+- RBAC dinámico: usar `CheckPermission` middleware con slugs `recurso.accion`. Los permisos viven en la tabla `permissions` asociados a roles via `role_permissions`. El cache de permisos se invalida al modificar `role_permissions`.
 - Campos ocultos: `intentos_fallidos`, `bloqueado_hasta`, `password`, `remember_token` jamas en respuestas JSON
 - Bitacora: registrar `login_exitoso`, `login_fallido`, `logout`, `cuenta_bloqueada` con IP y user_agent
 - **Datos sensibles cifrados en reposo (RNF-SEC-05):** costos y márgenes se almacenan con *encrypted cast* de Laravel (`'encrypted'`) a nivel de columna. Documentar la decisión en un ADR y verificar que los KPIs que usan costo siguen calculando tras el cifrado.
@@ -386,6 +389,8 @@ $table->timestamp('created_at')->useCurrent();
 - Verificar que los mensajes de error de autenticacion son genericos (no revelan si el email existe)
 - Verificar que campos sensibles esten en `$hidden` del modelo
 - Verificar que los endpoints de administrador tienen `middleware('role:administrador')`
+- Verificar que los endpoints de catálogo y operaciones usan `middleware('permission:recurso.accion')` (no hardcoded role checks)
+- Verificar que la caché de permisos se invalida cuando se modifica `role_permissions`
 - Revisar que la bitacora registra todos los eventos de autenticacion
 - Verificar que los tokens Sanctum se revocan en logout y que no hay tokens huerfanos
 - Verificar que costos/márgenes usan `encrypted` cast (RNF-SEC-05) y que ningún modelo o migración almacena recetas (RNF-SEC-06)
@@ -417,6 +422,8 @@ $table->timestamp('created_at')->useCurrent();
 [ ] No existe almacenamiento de recetas/formulas en modelos ni migraciones
 [ ] Operaciones de inventario multi-fila envueltas en DB::transaction()
 [ ] Movimientos de inventario son append-only (sin update/delete de filas)
+[ ] Permisos gestionados via tabla `permissions` + `role_permissions` (no hardcoded en rutas)
+[ ] Cache de permisos invalidada al modificar role_permissions
 ```
 
 ---
@@ -451,7 +458,9 @@ $table->timestamp('created_at')->useCurrent();
 
 ---
 
-## 7. ROLES DEL SISTEMA (RBAC)
+## 7. ROLES Y PERMISOS DEL SISTEMA (RBAC — Gestionado desde BD)
+
+### 7.1 Roles
 
 ```php
 Role::ADMINISTRADOR         = 'administrador'           // Rol técnico del sistema
@@ -460,20 +469,67 @@ Role::JEFE_PRODUCCION       = 'jefe_produccion'          // Supervisor operativo
 Role::ENCARGADO_INVENTARIOS = 'encargado_inventarios'    // Practicante — operación diaria completa
 ```
 
-Permisos según HU-002 y los stakeholders de Sesión 1:
+### 7.2 Matriz de permisos (almacenada en BD)
 
-| Rol | Puede | No puede |
-|-----|-------|----------|
-| **Administrador** | Gestionar usuarios, roles y parámetros técnicos del sistema | (rol técnico; no es el operador del negocio) |
-| **Gerencia** | Ver todo el inventario; **modificar puntos de reorden, parámetros de alertas y datos maestros**; recibir alertas | — |
-| **Jefe de Producción** | Ver inventarios; registrar producción y despachos; autorizar despachos a planta | **Modificar parámetros maestros** |
-| **Encargado de Inventarios** | **Acceso completo operativo:** recepciones, traslados internos, producción, despachos y configurar puntos de reorden | Gestión técnica de usuarios/roles |
+Los permisos **no están hardcodeados** en las rutas. Viven en las tablas `permissions` y `role_permissions` y se verifican dinámicamente via `CheckPermission` middleware con caché de 60 minutos por rol.
 
-Notas de diseño:
-- La visibilidad del inventario es **global**: cualquier rol autorizado ve el stock de las dos bodegas (no hay segregación por bodega) — decisión del cliente (HU-002, escenario 4).
-- En el cliente piloto, recepción y despacho los hace la misma persona, pero el modelo de roles se mantiene **diferenciado por autorización** (no por usuario físico) para que el sistema sea generalizable a otros centros (consigna del proyecto nuclear).
+**Formato de permiso:** `{recurso}.{accion}` — ej. `materias_primas.escribir`, `inventario.leer`
 
-**Regla:** siempre usar las constantes de clase. Nunca strings literales de rol en middleware ni en codigo de negocio.
+**Tabla de permisos iniciales (PermissionSeeder):**
+
+| Permiso (slug) | Administrador | Gerencia | Jefe Producción | Encargado Inventarios |
+|---|:---:|:---:|:---:|:---:|
+| `materias_primas.leer` | — | ✅ | ✅ | ✅ |
+| `materias_primas.escribir` | — | ✅ | — | ✅ |
+| `productos_terminados.leer` | — | ✅ | ✅ | ✅ |
+| `productos_terminados.escribir` | — | ✅ | — | ✅ |
+| `bodegas.leer` | — | ✅ | ✅ | ✅ |
+| `bodegas.escribir` | — | ✅ | — | ✅ |
+| `inventario.leer` | — | ✅ | ✅ | ✅ |
+| `inventario.escribir` | — | — | ✅ | ✅ |
+| `produccion.leer` | — | ✅ | ✅ | ✅ |
+| `produccion.escribir` | — | — | ✅ | ✅ |
+| `recepciones.leer` | — | ✅ | ✅ | ✅ |
+| `recepciones.escribir` | — | — | — | ✅ |
+| `despachos.leer` | — | ✅ | ✅ | ✅ |
+| `despachos.escribir` | — | — | ✅ | ✅ |
+| `alertas.leer` | — | ✅ | ✅ | ✅ |
+| `reportes.leer` | — | ✅ | ✅ | ✅ |
+| `permisos.gestionar` | ✅ | — | — | — |
+| `usuarios.gestionar` | ✅ | — | — | — |
+
+> **Nota:** El Administrador solo gestiona el sistema (usuarios, roles, permisos). No opera el inventario — eso es dominio de Gerencia, Jefe y Encargado.
+
+### 7.3 Arquitectura del sistema de permisos
+
+```
+Tabla `permissions`        → catálogo de permisos disponibles (nombre, recurso, accion)
+Tabla `role_permissions`   → pivot: qué permisos tiene cada rol
+Modelo `Permission`        → belongsToMany Role
+Modelo `Role`              → belongsToMany Permission via role_permissions
+Middleware `CheckPermission`  → alias 'permission' — verifica en BD, cachea 60 min por rol
+Módulo `Permisos`          → CRUD de permisos y asignación a roles (solo administrador)
+```
+
+**Flujo de verificación:**
+```
+Request → auth:sanctum → permission:recurso.accion
+  └─ CheckPermission::handle()
+       └─ Cache::remember("permisos_rol_{role_id}", 3600, fn() => $role->permissions->pluck('nombre'))
+       └─ Si el slug está en la colección → $next($request)
+       └─ Si no → 403 errorResponse
+```
+
+**Invalidación de caché:** al crear/eliminar entrada en `role_permissions` se ejecuta
+`Cache::forget("permisos_rol_{role_id}")` para que el cambio surta efecto de inmediato.
+
+### 7.4 Notas de diseño
+
+- La visibilidad del inventario es **global**: cualquier rol autorizado ve el stock de las dos bodegas (HU-002, escenario 4).
+- `CheckRole` (estático) se mantiene para endpoints de gestión de sistema (admin, roles). `CheckPermission` (dinámico) aplica a todos los endpoints operativos.
+- La matriz inicial se carga vía `PermissionSeeder`; puede modificarse desde la API sin redeploy.
+
+**Regla:** siempre usar las constantes `Role::` para strings de rol. Nunca strings literales.
 
 ---
 
@@ -482,6 +538,15 @@ Notas de diseño:
 ```
 roles
   id, nombre (unique, 50), descripcion (nullable), timestamps
+
+permissions
+  id, nombre (unique, slug ej. 'materias_primas.escribir'), descripcion (nullable)
+  recurso (varchar 100), accion (varchar 50), timestamps
+
+role_permissions                           [PIVOT — sin timestamps propios]
+  role_id (FK → roles, cascadeOnDelete)
+  permission_id (FK → permissions, cascadeOnDelete)
+  PRIMARY KEY (role_id, permission_id)
 
 users
   id, name, email (unique), email_verified_at, password
