@@ -115,12 +115,18 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.escribir'])->group(functi
 });
 
 // -------------------------------------------------------------------------
-// MÓDULO INVENTARIO — Consultas de stock y alertas (RFINV01 / HU-002)
+// MÓDULO INVENTARIO — Consultas de stock (RFINV01 / HU-002)
 // -------------------------------------------------------------------------
 Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(function () {
-    Route::get('/inventario/stock/mp',       [InventarioController::class, 'stockMp']);
-    Route::get('/inventario/stock/mp/{id}',  [InventarioController::class, 'stockMpPorId']);
-    Route::get('/inventario/alertas',        [InventarioController::class, 'alertas']);
+    Route::get('/inventario/stock/mp',      [InventarioController::class, 'stockMp']);
+    Route::get('/inventario/stock/mp/{id}', [InventarioController::class, 'stockMpPorId']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO ALERTAS — Alertas de stock bajo reorden y vencimientos (alertas.leer)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:alertas.leer'])->group(function () {
+    Route::get('/inventario/alertas', [InventarioController::class, 'alertas']);
 });
 
 Route::middleware(['auth:sanctum', 'permission:inventario.escribir'])->group(function () {
