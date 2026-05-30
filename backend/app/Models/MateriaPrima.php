@@ -44,6 +44,11 @@ class MateriaPrima extends Model
         return $this->hasMany(RelacionMpPt::class);
     }
 
+    public function lotes(): HasMany
+    {
+        return $this->hasMany(LoteMateriaPrima::class);
+    }
+
     public function estaActiva(): bool
     {
         return $this->activa === true;
