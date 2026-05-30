@@ -246,7 +246,7 @@ test('test_encargado_puede_listar_bodegas', function () {
     $this->withToken($token)
         ->getJson('/api/v1/bodegas')
         ->assertStatus(200)
-        ->assertJsonCount(2, 'data'); // Bodega Principal + Planta de Producción
+        ->assertJsonCount(3, 'data'); // Bodega Principal + Planta de Producción + Área de Ventas
 });
 
 // -----------------------------------------------------------------------

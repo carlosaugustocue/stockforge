@@ -50,6 +50,16 @@ class ProductoTerminado extends Model
         return $this->hasMany(RelacionMpPt::class);
     }
 
+    public function lotes(): HasMany
+    {
+        return $this->hasMany(LoteProductoTerminado::class);
+    }
+
+    public function ordenesProduccion(): HasMany
+    {
+        return $this->hasMany(OrdenProduccion::class);
+    }
+
     public function estaActivo(): bool
     {
         return $this->activo === true;

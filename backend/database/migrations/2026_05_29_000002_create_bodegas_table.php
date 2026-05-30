@@ -8,8 +8,14 @@ use Illuminate\Support\Facades\Schema;
  * Tabla: bodegas
  *
  * Espacios físicos de almacenamiento del centro de distribución.
- * El sistema opera con dos bodegas: Bodega Principal y Planta de Producción.
+ * El sistema opera con tres bodegas: Bodega Principal, Planta de Producción y Área de Ventas.
  * La visibilidad del stock es global para todos los roles autorizados (HU-002).
+ *
+ * Tipos:
+ *   principal → recepción de MP desde proveedores
+ *   produccion → donde se consume la MP y se genera el PT
+ *   ventas → donde llegan los PT tras producción y desde donde se despacha (RFPROD03)
+ *   otro → bodegas auxiliares
  */
 return new class extends Migration
 {
@@ -27,9 +33,9 @@ return new class extends Migration
                 ->comment('Descripción del espacio físico y su propósito');
 
             // Tipo de bodega — controla reglas de negocio de traslado (RFINV04)
-            $table->enum('tipo', ['principal', 'produccion', 'otro'])
+            $table->enum('tipo', ['principal', 'produccion', 'ventas', 'otro'])
                 ->default('otro')
-                ->comment('Tipo de bodega: principal (recepción), produccion (planta), otro');
+                ->comment('Tipo de bodega: principal (recepción MP), produccion (planta), ventas (PT disponibles para despacho), otro');
 
             // Estado activo — no se elimina físicamente si tiene movimientos
             $table->boolean('activa')->default(true)

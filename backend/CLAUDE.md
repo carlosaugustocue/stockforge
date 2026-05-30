@@ -570,7 +570,76 @@ sessions
 jobs / job_batches / failed_jobs
 ```
 
-> **Convención para tablas del dominio (próximas: catálogo, bodegas, lotes, órdenes, recepciones, movimientos, producción, despachos):** cantidades y costos en `decimal`; costos con cast `encrypted` (RNF-SEC-05); las tablas de movimiento son **inmutables / append-only** (HU-027). Ninguna tabla almacena recetas (RNF-SEC-06). El sistema opera una sola sede: no se modela multi-tenant por ahora (decisión de alcance / YAGNI).
+ordenes_pedido                     [Recepción contra orden — RFREC]
+  id, proveedor (varchar), estado (enum: pendiente|en_recepcion|cerrada)
+  fecha_esperada (date), observaciones (nullable), timestamps
+
+recepciones                        [INMUTABLE — solo created_at]
+  id, orden_pedido_id (FK → ordenes_pedido)
+  user_id (FK → users, nullOnDelete)
+  observaciones (nullable), created_at
+
+lotes_materia_prima                [Un lote por recepción parcial]
+  id, recepcion_id (FK → recepciones)
+  materia_prima_id (FK → materias_primas)
+  bodega_id (FK → bodegas)
+  cantidad_inicial (decimal 12,3)
+  cantidad_actual  (decimal 12,3)   ← se actualiza con cada consumo/traslado
+  fecha_vencimiento (date, nullable)
+  fecha_ingreso (timestamp)         ← desempate FEFO cuando misma fecha_vencimiento
+  timestamps
+
+ordenes_produccion                 [Planificación del ciclo productivo]
+  id, producto_terminado_id (FK → productos_terminados)
+  user_id (FK → users, nullOnDelete)
+  cantidad_planificada (decimal 12,3)
+  cantidad_producida   (decimal 12,3, nullable) ← se llena al ejecutar
+  fecha_planificada (date)
+  estado (enum: pendiente|producido|completada|anulada)
+  timestamps
+
+requerimientos_materiales          [Snapshot inmutable de MP calculadas en Etapa 1]
+  id, orden_produccion_id (FK → ordenes_produccion, cascadeOnDelete)
+  materia_prima_id (FK → materias_primas)
+  cantidad_requerida (decimal 12,3)  ← calculada al crear la orden
+  lote_sugerido_id   (FK → lotes_materia_prima, nullable) ← FEFO al planificar
+  created_at                         ← solo created_at (inmutable)
+
+lotes_producto_terminado           [PT creado por cada ejecución de producción]
+  id, orden_produccion_id (FK → ordenes_produccion)
+  producto_terminado_id (FK → productos_terminados)
+  bodega_id (FK → bodegas)          ← cambia de Planta → Ventas tras traslado
+  cantidad_inicial (decimal 12,3)
+  cantidad_actual  (decimal 12,3)
+  fecha_produccion (date)
+  timestamps
+
+movimientos_inventario             [INMUTABLE — append-only — toda operación de stock]
+  id
+  tipo (enum: CONSUMO_MP | PRODUCCION_ENTRADA | TRASLADO_SALIDA | TRASLADO_ENTRADA |
+              DESPACHO_SALIDA | RECEPCION_ENTRADA | AJUSTE_ENTRADA | AJUSTE_SALIDA)
+  entidad_tipo (enum: materia_prima | producto_terminado)
+  entidad_id   (unsignedBigInt)      ← id del lote_mp o lote_pt afectado
+  bodega_id (FK → bodegas)
+  cantidad (decimal 12,3)            ← siempre positivo; el tipo indica dirección
+  orden_produccion_id (FK → ordenes_produccion, nullable)
+  recepcion_id        (FK → recepciones, nullable)
+  movimiento_origen_id (FK → movimientos_inventario, nullable) ← para compensatorios
+  user_id (FK → users, nullOnDelete)
+  observaciones (nullable)
+  created_at                         ← solo created_at (inmutable)
+
+despachos                          [INMUTABLE — solo created_at]
+  id, lote_pt_id (FK → lotes_producto_terminado)
+  user_id (FK → users, nullOnDelete)
+  cantidad (decimal 12,3)
+  referencia_cliente (varchar 255, nullable)
+  movimiento_id (FK → movimientos_inventario)  ← el movimiento DESPACHO_SALIDA
+  created_at
+
+> **Convención para tablas del dominio:** cantidades en `decimal(12,3)`; costos con cast
+> `encrypted` (RNF-SEC-05); tablas de movimientos son **inmutables / append-only** (HU-027).
+> Ninguna tabla almacena recetas (RNF-SEC-06). Una sola sede: no se modela multi-tenant (YAGNI).
 
 ---
 
@@ -607,32 +676,112 @@ jobs / job_batches / failed_jobs
 6. Retornar UserResource (201)
 ```
 
-### Flujo de traslado entre bodegas (RFINV04) — patrón transaccional
+### Flujo completo del ciclo de producción (RFPROD01-05 + RFINV04)
+
+**Decisión de diseño confirmada:** el descuento de materia prima ocurre en el momento
+en que se registra la producción como completada (Opción B). No existe un paso
+obligatorio de traslado previo de MP — el sistema descuenta directo de Bodega Principal.
+Los traslados de MP entre bodegas son operaciones independientes y opcionales.
+
+El ciclo de producción se divide en **4 etapas secuenciales**:
+
 ```
-1. Middleware auth:sanctum + role (encargado/jefe segun política)
-2. TrasladoRequest → valida bodega origen ≠ destino, cantidad > 0, lote existente
-3. InventarioService::trasladar() dentro de DB::transaction():
-   └─ leer lote/stock origen con lockForUpdate()
-   └─ validar stock suficiente
-      └─ insuficiente → abortar transacción → error específico (RFPROD05-style)
-   └─ insertar movimiento SALIDA (bodega origen)  [inmutable]
-   └─ insertar movimiento ENTRADA (bodega destino)[inmutable]
-   └─ commit (o rollback completo ante cualquier fallo)
-4. Retornar comprobante del traslado
+ETAPA 1 — Crear Orden de Producción
+──────────────────────────────────────────────────────────────────────────────
+Actor:    Jefe de Producción o Encargado
+Acción:   POST /api/v1/produccion/ordenes
+          { producto_terminado_id, cantidad_a_producir, fecha_planificada }
+
+Sistema:
+  1. Por cada RelacionMpPt del producto calcula:
+       cantidad_requerida = relacion.cantidad_requerida × cantidad_a_producir
+  2. Por cada MP: consulta stock disponible en Bodega Principal (FEFO — lote sugerido)
+     └─ Si alguna MP no tiene stock suficiente → 422 con detalle (mp_id, nombre, faltante)
+  3. Persiste OrdenProduccion con estado = 'pendiente'
+  4. Persiste RequerimientoMateriales (snapshot inmutable de lo calculado)
+     [Este snapshot no cambia aunque el stock cambie después — es la "foto" al momento de planificar]
+
+Resultado: OrdenProduccion con su listado de materiales requeridos
+  → El encargado usa este listado para preparar físicamente los ingredientes
+
+ETAPA 2 — Registrar Producción (descuenta MP, crea PT en Planta de Producción)
+──────────────────────────────────────────────────────────────────────────────
+Actor:    Jefe de Producción o Encargado
+Acción:   POST /api/v1/produccion/ordenes/{id}/ejecutar
+          { cantidad_producida }  ← puede diferir de la planificada
+
+Sistema (dentro de DB::transaction()):
+  1. Verifica OrdenProduccion.estado = 'pendiente'
+  2. Recalcula consumo real por cada MP:
+       consumo_real = relacion.cantidad_requerida × cantidad_producida
+  3. Por cada MP (orden FEFO — lote más próximo a vencer primero):
+     └─ lockForUpdate() sobre el/los lotes en Bodega Principal
+     └─ Si stock insuficiente → rollback → 422 con: mp, cantidad_faltante (RFPROD05)
+     └─ Inserta movimiento CONSUMO_MP [inmutable, referencia orden_produccion_id]
+  4. Crea LoteProductoTerminado { cantidad_producida, fecha_produccion, bodega = Planta }
+  5. Inserta movimiento PRODUCCION_ENTRADA del PT en Planta de Producción [inmutable]
+     [PT existe en BD pero en bodega = Planta de Producción]
+     [NO está disponible para despacho a clientes todavía]
+  6. Actualiza OrdenProduccion.estado = 'producido'
+  7. commit
+
+Resultado: MP descontada de Bodega Principal. PT creado en Planta de Producción.
+
+ETAPA 3 — Traslado de PT: Planta de Producción → Área de Ventas/Despacho
+──────────────────────────────────────────────────────────────────────────────
+Actor:    Encargado de Inventarios
+Acción:   POST /api/v1/produccion/ordenes/{id}/traslado-pt
+
+Sistema (dentro de DB::transaction()):
+  1. Verifica OrdenProduccion.estado = 'producido'
+  2. lockForUpdate() sobre el LoteProductoTerminado en Planta de Producción
+  3. Inserta movimiento TRASLADO_SALIDA del PT (Planta de Producción) [inmutable]
+  4. Inserta movimiento TRASLADO_ENTRADA del PT (Bodega Ventas/Despacho) [inmutable]
+  5. Actualiza OrdenProduccion.estado = 'completada'
+  6. commit
+
+Resultado: PT disponible en Bodega Ventas/Despacho para ser despachado a clientes
+  → Este es el momento en que el PT aparece como stock disponible para despacho
+
+ETAPA 4 — Despacho a cliente
+──────────────────────────────────────────────────────────────────────────────
+Actor:    Jefe de Producción o Encargado
+Acción:   POST /api/v1/despachos
+          { lote_pt_id, cantidad, referencia_cliente }
+
+Sistema (dentro de DB::transaction()):
+  1. Verifica que el lote de PT esté en Bodega Ventas/Despacho
+  2. lockForUpdate() sobre el lote de PT
+  3. Valida stock suficiente
+  4. Inserta movimiento DESPACHO_SALIDA del PT [inmutable]
+  5. Persiste el Despacho con referencia al cliente
+  6. commit
+
+Resultado: Stock de PT reducido. Trazabilidad completa:
+  Proveedor → Recepción → Lote MP → Consumo → Orden Producción → PT → Despacho → Cliente
 ```
 
-### Flujo de producción que descuenta MP (RFPROD01-05) — patrón transaccional
+**Reglas críticas del ciclo:**
+- El descuento de MP ocurre en Etapa 2 (registro de producción), no antes.
+- El PT solo está disponible para despacho después de la Etapa 3 (traslado a Ventas).
+- Si cantidad_producida < cantidad_planificada, el consumo de MP se ajusta a la producción real.
+- Cada movimiento lleva `orden_produccion_id` para trazabilidad completa del lote.
+- Los movimientos son inmutables. Una corrección se registra como movimiento compensatorio (HU-027).
+
+### Flujo de traslado de MP independiente (RFINV04)
 ```
-1. Middleware auth:sanctum + role (encargado/jefe)
-2. ProduccionRequest → valida producto, cantidad de lotes/batidos, MP consumidas
-3. ProduccionService::registrar() dentro de DB::transaction():
-   └─ por cada MP: FefoService sugiere lote más próximo a vencer
-   └─ leer lotes con lockForUpdate()
-   └─ si alguna MP no alcanza → abortar → error con MP y cantidad faltante (RFPROD05)
-   └─ insertar movimientos CONSUMO de MP (inmutables, asociados al lote de producción)
-   └─ insertar movimiento INGRESO de producto terminado (RFPROD03)
+Operación opcional para mover stock entre bodegas fuera del ciclo productivo
+(ej. reordenar stock, devolver excedentes, ajustes de bodega).
+
+1. Middleware auth:sanctum + permission:inventario.escribir
+2. TrasladoRequest → valida bodega_origen ≠ bodega_destino, lote_id, cantidad > 0
+3. InventarioService::trasladar() dentro de DB::transaction():
+   └─ lockForUpdate() sobre el lote en bodega origen
+   └─ valida stock suficiente → insuficiente: rollback + error con cantidad faltante
+   └─ inserta movimiento TRASLADO_SALIDA (bodega origen)  [inmutable]
+   └─ inserta movimiento TRASLADO_ENTRADA (bodega destino) [inmutable]
    └─ commit
-4. Retornar resumen del lote de producción
+4. Retornar comprobante del traslado
 ```
 
 ---

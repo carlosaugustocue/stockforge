@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bodega extends Model
 {
@@ -20,6 +21,21 @@ class Bodega extends Model
         ];
     }
 
+    public function lotesMateriaPrima(): HasMany
+    {
+        return $this->hasMany(LoteMateriaPrima::class);
+    }
+
+    public function lotesProductoTerminado(): HasMany
+    {
+        return $this->hasMany(LoteProductoTerminado::class);
+    }
+
+    public function movimientos(): HasMany
+    {
+        return $this->hasMany(MovimientoInventario::class);
+    }
+
     public function esPrincipal(): bool
     {
         return $this->tipo === 'principal';
@@ -28,5 +44,10 @@ class Bodega extends Model
     public function esProduccion(): bool
     {
         return $this->tipo === 'produccion';
+    }
+
+    public function esVentas(): bool
+    {
+        return $this->tipo === 'ventas';
     }
 }

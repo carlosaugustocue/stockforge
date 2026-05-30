@@ -6,6 +6,9 @@ use App\Modules\Catalogo\Controllers\MateriaPrimaController;
 use App\Modules\Catalogo\Controllers\PresentacionController;
 use App\Modules\Catalogo\Controllers\ProductoTerminadoController;
 use App\Modules\Permisos\Controllers\PermissionController;
+use App\Modules\Inventario\Controllers\InventarioController;
+use App\Modules\Produccion\Controllers\ProduccionController;
+use App\Modules\Recepciones\Controllers\RecepcionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -107,4 +110,45 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.escribir'])->group(functi
 
     Route::patch('/presentaciones/{id}',  [PresentacionController::class, 'update']);
     Route::delete('/presentaciones/{id}', [PresentacionController::class, 'destroy']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO INVENTARIO — Consultas de stock y alertas (RFINV01 / HU-002)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(function () {
+    Route::get('/inventario/stock/mp',       [InventarioController::class, 'stockMp']);
+    Route::get('/inventario/stock/mp/{id}',  [InventarioController::class, 'stockMpPorId']);
+    Route::get('/inventario/alertas',        [InventarioController::class, 'alertas']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO PRODUCCIÓN — Ciclo productivo completo (RFPROD01-05)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:produccion.leer'])->group(function () {
+    Route::get('/produccion/ordenes',        [ProduccionController::class, 'listarOrdenes']);
+    Route::get('/produccion/ordenes/{id}',   [ProduccionController::class, 'verOrden']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:produccion.escribir'])->group(function () {
+    Route::post('/produccion/ordenes',                          [ProduccionController::class, 'crearOrden']);
+    Route::post('/produccion/ordenes/{id}/ejecutar',            [ProduccionController::class, 'ejecutar']);
+    Route::post('/produccion/ordenes/{id}/traslado-pt',         [ProduccionController::class, 'trasladarPt']);
+    Route::patch('/produccion/ordenes/{id}/anular',             [ProduccionController::class, 'anular']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO RECEPCIONES — Órdenes de pedido y entrada de materias primas (RFREC)
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:recepciones.leer'])->group(function () {
+    // Rutas específicas ANTES que las de parámetro wildcard para evitar colisiones
+    Route::get('/recepciones/ordenes',                       [RecepcionController::class, 'listarOrdenes']);
+    Route::get('/recepciones/ordenes/{id}',                  [RecepcionController::class, 'verOrden']);
+    Route::get('/recepciones',                               [RecepcionController::class, 'listarRecepciones']);
+    Route::get('/recepciones/{id}',                          [RecepcionController::class, 'verRecepcion']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:recepciones.escribir'])->group(function () {
+    Route::post('/recepciones/ordenes',                      [RecepcionController::class, 'crearOrden']);
+    Route::patch('/recepciones/ordenes/{id}',                [RecepcionController::class, 'actualizarOrden']);
+    Route::post('/recepciones/ordenes/{id}/recepciones',     [RecepcionController::class, 'registrarRecepcion']);
 });
