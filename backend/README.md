@@ -1,9 +1,25 @@
-# Inventario Logística — Backend API
+# Daluzed Pastelería — Backend API
 
-**Proyecto Nuclear 3 — Corporación Universitaria Alexander von Humboldt (CUE)**
+**Proyecto Nuclear 3 · Corporación Universitaria Alexander von Humboldt (CUE)**
 
-Sistema de gestión de inventario y logística para centros de distribución.
-Backend construido con Laravel + Sanctum siguiendo principios SOLID y arquitectura de Monolito Modular.
+Sistema de gestión de inventario, producción y logística para Daluzed Pastelería.
+Backend construido con **Laravel 12 + PHP 8.3 + Sanctum** siguiendo principios SOLID y arquitectura de Monolito Modular.
+
+---
+
+## Estado actual
+
+| Módulo | Endpoints | Tests | Estado |
+|--------|:---------:|:-----:|:------:|
+| Autenticación + RBAC | 7 | 17 | ✅ |
+| Catálogo (MP, PT, Bodegas, Presentaciones) | 18 | 18 | ✅ |
+| Permisos dinámicos (matriz RBAC) | 4 | 13 | ✅ |
+| Recepciones (órdenes de pedido + entrada MP) | 7 | 16 | ✅ |
+| Inventario (stock + alertas + traslados) | 4 | 19 | ✅ |
+| Producción (ciclo completo 4 etapas + FEFO) | 6 | 10 | ✅ |
+| Despacho (salida PT a clientes) | 3 | 10 | ✅ |
+| Reportes (KPIs + 4 reportes de gestión) | 5 | 10 | ✅ |
+| **Total** | **54** | **113+** | ✅ |
 
 ---
 
@@ -11,122 +27,93 @@ Backend construido con Laravel + Sanctum siguiendo principios SOLID y arquitectu
 
 | Herramienta | Versión mínima |
 |-------------|----------------|
-| PHP         | 8.3            |
-| Composer    | 2.x            |
-| MySQL       | 8.0            |
+| PHP | 8.3 |
+| Composer | 2.x |
+| MySQL | 8.0 |
 
 ---
 
-## Instalación paso a paso
+## Instalación
 
 ```bash
 # 1. Clonar el repositorio
 git clone <url-del-repo>
-cd inventario-logistica-backend
+cd IPN-DEV/backend
 
 # 2. Instalar dependencias PHP
 composer install
 
-# 3. Copiar y configurar el archivo de entorno
+# 3. Configurar entorno
 cp .env.example .env
 # Editar .env con tus credenciales de MySQL
 
 # 4. Generar clave de aplicación
 php artisan key:generate
 
-# 5. Crear la base de datos en MySQL
+# 5. Crear la base de datos
 mysql -u root -p -e "CREATE DATABASE inventario_logistica CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 6. Ejecutar migraciones (crea las tablas)
-php artisan migrate
+# 6. Ejecutar migraciones y seeders
+php artisan migrate --seed
 
-# 7. Ejecutar seeders (crea roles y usuarios de prueba)
-php artisan db:seed
-
-# 8. Iniciar el servidor de desarrollo
+# 7. Iniciar servidor de desarrollo
 php artisan serve
-# La API estará disponible en: http://localhost:8000/api
+# API disponible en: http://localhost:8000/api/v1
 ```
 
 ---
 
-## Endpoints disponibles
+## Usuarios de prueba
 
-### Rutas públicas (sin token)
-
-| Método | Ruta            | Body                    | Descripción    |
-|--------|-----------------|-------------------------|----------------|
-| POST   | /api/auth/login | `email`, `password`     | Iniciar sesión |
-
-**Ejemplo request:**
-```json
-POST /api/auth/login
-{
-  "email": "admin@inventario.test",
-  "password": "Admin1234!"
-}
-```
-
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "message": "Inicio de sesión exitoso.",
-  "data": {
-    "usuario": {
-      "id": 1,
-      "nombre": "Administrador",
-      "email": "admin@inventario.test",
-      "activo": true,
-      "rol": "administrador",
-      "creado_en": "2026-01-01 00:00:00"
-    },
-    "token": "1|abc123...",
-    "rol": "administrador"
-  }
-}
-```
-
-### Rutas protegidas (`Authorization: Bearer {token}`)
-
-| Método | Ruta               | Roles permitidos | Descripción                  |
-|--------|--------------------|------------------|------------------------------|
-| POST   | /api/auth/logout   | Todos            | Cerrar sesión                |
-| GET    | /api/auth/me       | Todos            | Ver usuario actual           |
-| POST   | /api/auth/usuarios | administrador    | Crear nuevo usuario          |
+| Email | Contraseña | Rol |
+|-----------------------------|---------------|------------------------|
+| admin@inventario.test | Admin1234! | administrador |
+| gerencia@inventario.test | Gerencia1234! | gerencia |
+| produccion@inventario.test | Prod1234! | jefe_produccion |
+| inventarios@inventario.test | Inv1234! | encargado_inventarios |
 
 ---
 
-## Tabla de roles y permisos
-
-| Rol                   | Login | Ver /me | Crear usuarios |
-|-----------------------|-------|---------|----------------|
-| administrador         | ✅    | ✅      | ✅             |
-| gerencia              | ✅    | ✅      | ❌             |
-| jefe_produccion       | ✅    | ✅      | ❌             |
-| encargado_inventarios | ✅    | ✅      | ❌             |
-
----
-
-## Usuarios de prueba (seeders)
-
-| Email                       | Contraseña    | Rol                   |
-|-----------------------------|---------------|-----------------------|
-| admin@inventario.test       | Admin1234!    | administrador         |
-| gerencia@inventario.test    | Gerencia1234! | gerencia              |
-| produccion@inventario.test  | Prod1234!     | jefe_produccion       |
-| inventarios@inventario.test | Inv1234!      | encargado_inventarios |
-
----
-
-## Ejecutar los tests
+## Ejecutar tests
 
 ```bash
-# Tests del módulo Auth
-php artisan test --filter=AuthTest
+# Suite completa
+php artisan test
 
-# Todos los tests con detalle
-php artisan test --verbose
+# Módulo específico
+php artisan test tests/Feature/Auth/AuthTest.php
+php artisan test tests/Feature/Produccion/ProduccionTest.php
+
+# Test de integración E2E (flujo completo)
+php artisan test tests/Feature/IntegracionTest.php
+
+# Con cobertura (meta ≥ 70%)
+php artisan test --coverage --min=70
+```
+
+---
+
+## Flujo de negocio completo
+
+```
+1. RECEPCIÓN       POST /recepciones/ordenes + /recepciones/ordenes/{id}/recepciones
+                   → MP llega a Bodega Principal, se crea lote con trazabilidad
+
+2. INVENTARIO      GET /inventario/stock/mp  · GET /inventario/alertas
+                   → Consulta de stock por bodega y alertas de reorden
+
+3. TRASLADO MP     POST /inventario/traslados          (opcional — organización interna)
+                   → Mueve MP entre bodegas con movimientos TRASLADO_SALIDA/ENTRADA
+
+4. PRODUCCIÓN      POST /produccion/ordenes            → Etapa 1: crear orden
+                   POST /produccion/ordenes/{id}/ejecutar → Etapa 2: consume MP (FEFO)
+                   POST /produccion/ordenes/{id}/traslado-pt → Etapa 3: PT → Ventas
+
+5. DESPACHO        POST /despachos
+                   → PT sale de Bodega Ventas al cliente
+
+6. REPORTES        GET /reportes/kpis · /produccion · /despachos · /movimientos · /stock-pt
+                   → KPIs y trazabilidad completa (HU-027)
 ```
 
 ---
@@ -135,23 +122,60 @@ php artisan test --verbose
 
 ```
 app/
+├── Models/                     ← Modelos Eloquent (solo datos y relaciones)
 ├── Modules/
-│   └── Auth/
-│       ├── Controllers/    ← Recibe peticiones HTTP
-│       ├── Requests/       ← Valida datos de entrada
-│       ├── Services/       ← Lógica de negocio (SOLID-SRP)
-│       ├── Repositories/   ← Acceso a datos (SOLID-DIP)
-│       └── Resources/      ← DTO / serialización JSON
-├── Models/
+│   ├── Auth/                   ← Autenticación y gestión de usuarios
+│   ├── Catalogo/               ← MP, PT, Bodegas, Presentaciones, Recetas
+│   ├── Permisos/               ← Matriz RBAC dinámica (permissions / role_permissions)
+│   ├── Recepciones/            ← Órdenes de pedido y entrada de MP
+│   ├── Inventario/             ← Stock, alertas y traslados entre bodegas
+│   ├── Produccion/             ← Ciclo productivo completo + FEFO
+│   ├── Despacho/               ← Salida de PT hacia clientes
+│   └── Reportes/               ← KPIs y reportes de gestión
+│       └── {Modulo}/
+│           ├── Controllers/    ← Solo HTTP: recibe, delega, responde
+│           ├── Services/       ← Lógica de negocio (SRP)
+│           ├── Repositories/   ← Persistencia, implementa interfaz (DIP)
+│           │   └── Contracts/  ← Interfaces (ISP)
+│           ├── Requests/       ← Validación de entrada
+│           └── Resources/      ← DTO de salida (serialización JSON)
+├── Providers/
+│   └── AppServiceProvider.php  ← Bindings interface → implementación
 └── Shared/
-    ├── Traits/             ← ApiResponseTrait
-    └── Middleware/         ← CheckRole (RBAC)
+    ├── Middleware/
+    │   ├── CheckRole.php        ← RBAC estático (role:administrador)
+    │   └── CheckPermission.php ← RBAC dinámico (permission:recurso.accion)
+    └── Traits/
+        └── ApiResponseTrait.php ← Respuestas JSON estandarizadas
 ```
+
+---
 
 ## Principios SOLID aplicados
 
-| Principio | Aplicación |
-|-----------|-----------|
-| SRP | Service (negocio), Repository (datos), Controller (HTTP) tienen una sola responsabilidad |
-| DIP | AuthService depende de UserRepositoryInterface, no de la implementación concreta |
-| OCP | Nuevos módulos se agregan en `app/Modules/` sin modificar los existentes |
+| Principio | Aplicación concreta |
+|-----------|---------------------|
+| **SRP** | Controller solo orquesta HTTP; Service solo lógica de negocio; Repository solo BD |
+| **OCP** | Nuevos módulos en `app/Modules/` sin modificar los existentes |
+| **LSP** | Cada Repository implementa su interfaz completamente e intercambiable |
+| **ISP** | Interfaces específicas por módulo — no hay interfaces "dios" |
+| **DIP** | Services dependen de interfaces (Contracts), nunca de implementaciones concretas |
+
+---
+
+## Seguridad
+
+- **Autenticación:** Laravel Sanctum (tokens Bearer)
+- **RBAC estático:** middleware `role:administrador` para gestión de sistema
+- **RBAC dinámico:** middleware `permission:recurso.accion` con caché de 60 min por rol
+- **Transacciones:** todas las escrituras multi-tabla en `DB::transaction()` + `lockForUpdate()` (RFINV04)
+- **Inmutabilidad:** los movimientos de inventario son append-only — las correcciones son movimientos compensatorios (HU-027)
+- **FEFO:** selección del lote más próximo a vencer para consumo en producción (RFINV03)
+
+---
+
+## Documentación adicional
+
+- **API completa:** [`API.md`](./API.md) — contrato detallado de todos los endpoints
+- **Arquitectura:** [`CLAUDE.md`](./CLAUDE.md) — fuente de verdad del proyecto para agentes
+- **ADRs:** `/.agents/docs/` — decisiones arquitectónicas registradas
