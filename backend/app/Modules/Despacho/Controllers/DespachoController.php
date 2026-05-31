@@ -27,12 +27,36 @@ class DespachoController extends Controller
         private readonly DespachoService $service,
     ) {}
 
+    /**
+     * @OA\Get(
+     *     path="/despachos",
+     *     summary="Listar despachos",
+     *     tags={"Despacho"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Listado de despachos"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere despachos.leer)")
+     * )
+     */
     public function listarDespachos(): JsonResponse
     {
         $despachos = $this->service->listarDespachos();
         return $this->successResponse(DespachoResource::collection($despachos), 'Despachos listados.');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/despachos/{id}",
+     *     summary="Ver despacho",
+     *     tags={"Despacho"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Detalle del despacho"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=404, description="No encontrado")
+     * )
+     */
     public function verDespacho(int $id): JsonResponse
     {
         $despacho = $this->service->obtenerDespacho($id);
@@ -42,6 +66,29 @@ class DespachoController extends Controller
         return $this->successResponse(new DespachoResource($despacho), 'Despacho encontrado.');
     }
 
+    /**
+     * @OA\Post(
+     *     path="/despachos",
+     *     summary="Registrar despacho",
+     *     description="Registra la salida de un producto terminado desde Bodega Ventas hacia un cliente (RFPROD03 / HU-027).",
+     *     tags={"Despacho"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"lote_pt_id","cantidad","cliente"},
+     *             @OA\Property(property="lote_pt_id", type="integer", example=1),
+     *             @OA\Property(property="cantidad", type="number", example=50),
+     *             @OA\Property(property="cliente", type="string", example="Supermercado La 14"),
+     *             @OA\Property(property="observaciones", type="string", example="Entrega urgente")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Despacho registrado con movimiento DESPACHO_SALIDA inmutable"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere despachos.escribir)"),
+     *     @OA\Response(response=422, description="Stock insuficiente o lote no en Bodega Ventas")
+     * )
+     */
     public function registrar(CreateDespachoRequest $request): JsonResponse
     {
         try {

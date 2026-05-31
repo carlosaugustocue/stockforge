@@ -31,12 +31,45 @@ class ProduccionController extends Controller
         private readonly ProduccionService $service,
     ) {}
 
+    /**
+     * @OA\Get(
+     *     path="/produccion/ordenes",
+     *     summary="Listar órdenes de producción",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Listado de órdenes"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere produccion.leer)")
+     * )
+     */
     public function listarOrdenes(): JsonResponse
     {
         $ordenes = $this->service->listarOrdenes();
         return $this->successResponse(OrdenProduccionResource::collection($ordenes), 'Órdenes de producción listadas.');
     }
 
+    /**
+     * @OA\Post(
+     *     path="/produccion/ordenes",
+     *     summary="Crear orden de producción",
+     *     description="Etapa 1: planifica la producción de un producto terminado (RFPROD01).",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"producto_terminado_id","cantidad_planificada","fecha_planificada"},
+     *             @OA\Property(property="producto_terminado_id", type="integer", example=1),
+     *             @OA\Property(property="cantidad_planificada", type="number", example=100),
+     *             @OA\Property(property="fecha_planificada", type="string", format="date", example="2026-06-01")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Orden creada en estado pendiente"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere produccion.escribir)"),
+     *     @OA\Response(response=422, description="Error de validación")
+     * )
+     */
     public function crearOrden(CreateOrdenProduccionRequest $request): JsonResponse
     {
         try {
@@ -52,6 +85,19 @@ class ProduccionController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/produccion/ordenes/{id}",
+     *     summary="Ver orden de producción",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Detalle de la orden con consumos"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=404, description="No encontrada")
+     * )
+     */
     public function verOrden(int $id): JsonResponse
     {
         $orden = $this->service->obtenerOrden($id);
@@ -61,6 +107,27 @@ class ProduccionController extends Controller
         return $this->successResponse(new OrdenProduccionResource($orden), 'Orden de producción encontrada.');
     }
 
+    /**
+     * @OA\Post(
+     *     path="/produccion/ordenes/{id}/ejecutar",
+     *     summary="Ejecutar orden de producción",
+     *     description="Etapa 2: descuenta MP de Bodega Principal usando selección FEFO (RFPROD02). Rechaza si falta stock.",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"cantidad_producida"},
+     *             @OA\Property(property="cantidad_producida", type="number", example=95)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Producción ejecutada, MP descontada, lote PT creado en Bodega Producción"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=422, description="Stock insuficiente — indica qué MP falta y cuánta (RFPROD05)")
+     * )
+     */
     public function ejecutar(EjecutarProduccionRequest $request, int $id): JsonResponse
     {
         $orden = $this->service->obtenerOrden($id);
@@ -80,6 +147,20 @@ class ProduccionController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/produccion/ordenes/{id}/traslado-pt",
+     *     summary="Trasladar PT a Bodega Ventas",
+     *     description="Etapa 3: mueve el producto terminado de Bodega Producción a Bodega Ventas para despacho (RFPROD03).",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="PT trasladado a Bodega Ventas"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=422, description="Orden no ejecutada o ya trasladada")
+     * )
+     */
     public function trasladarPt(Request $request, int $id): JsonResponse
     {
         $orden = $this->service->obtenerOrden($id);
@@ -95,6 +176,20 @@ class ProduccionController extends Controller
         }
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/produccion/ordenes/{id}/anular",
+     *     summary="Anular orden de producción",
+     *     description="Crea movimientos compensatorios inmutables. No borra registros (HU-027).",
+     *     tags={"Producción"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Orden anulada con movimiento compensatorio"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=422, description="No se puede anular en el estado actual")
+     * )
+     */
     public function anular(int $id): JsonResponse
     {
         $orden = $this->service->obtenerOrden($id);

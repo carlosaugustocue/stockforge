@@ -34,6 +34,23 @@ class BitacoraController extends Controller
      *
      * @return JsonResponse HTTP 200 con colección paginada
      */
+    /**
+     * @OA\Get(
+     *     path="/bitacora",
+     *     summary="Consultar bitácora de accesos",
+     *     description="Solo administrador. Lista los eventos de autenticación con filtros opcionales.",
+     *     tags={"Bitácora"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="user_id", in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="accion", in="query", required=false, @OA\Schema(type="string", enum={"login_exitoso","login_fallido","logout","cuenta_bloqueada"})),
+     *     @OA\Parameter(name="desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="por_pagina", in="query", required=false, @OA\Schema(type="integer", maximum=100, default=50)),
+     *     @OA\Response(response=200, description="Registros paginados de la bitácora"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere rol administrador)")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $filtros = $request->only(['user_id', 'accion', 'desde', 'hasta', 'por_pagina']);

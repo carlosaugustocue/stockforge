@@ -28,11 +28,36 @@ class ReportesController extends Controller
         private readonly ReportesService $service,
     ) {}
 
+    /**
+     * @OA\Get(
+     *     path="/reportes/kpis",
+     *     summary="KPIs del mes actual",
+     *     description="Retorna indicadores clave: órdenes por estado, total despachado, MP recibida, alertas de reorden.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="KPIs calculados"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere reportes.leer)")
+     * )
+     */
     public function kpis(): JsonResponse
     {
         return $this->successResponse($this->service->kpis(), 'KPIs del sistema.');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reportes/produccion",
+     *     summary="Reporte de producción por período",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Órdenes de producción en el período"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
     public function produccion(Request $request): JsonResponse
     {
         $data = $this->service->reporteProduccion(
@@ -42,6 +67,19 @@ class ReportesController extends Controller
         return $this->successResponse($data, 'Reporte de producción.');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reportes/despachos",
+     *     summary="Reporte de despachos por período",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Despachos en el período"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
     public function despachos(Request $request): JsonResponse
     {
         $data = $this->service->reporteDespachos(
@@ -51,6 +89,21 @@ class ReportesController extends Controller
         return $this->successResponse($data, 'Reporte de despachos.');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reportes/movimientos",
+     *     summary="Reporte de movimientos de inventario",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="tipo", in="query", required=false, description="Tipo de movimiento", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="entidad_tipo", in="query", required=false, @OA\Schema(type="string", enum={"materia_prima","producto_terminado"})),
+     *     @OA\Response(response=200, description="Movimientos filtrados"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
     public function movimientos(Request $request): JsonResponse
     {
         $data = $this->service->reporteMovimientos(
@@ -62,6 +115,17 @@ class ReportesController extends Controller
         return $this->successResponse($data, 'Historial de movimientos de inventario.');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reportes/stock-pt",
+     *     summary="Stock actual de productos terminados",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Stock de PT por bodega"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
     public function stockPt(): JsonResponse
     {
         return $this->successResponse($this->service->stockPt(), 'Stock de PT disponible para despacho.');
