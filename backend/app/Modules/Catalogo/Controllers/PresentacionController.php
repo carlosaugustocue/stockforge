@@ -19,6 +19,14 @@ class PresentacionController extends Controller
     ) {}
 
     // GET /api/v1/productos-terminados/{id}/presentaciones
+    /**
+     * @OA\Get(path="/productos-terminados/{id}/presentaciones", summary="Listar presentaciones de un PT",
+     *     tags={"Catálogo - Presentaciones"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Presentaciones del producto"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere productos_terminados.leer)")
+     * )
+     */
     public function index(int $productoId): JsonResponse
     {
         try {
@@ -33,6 +41,19 @@ class PresentacionController extends Controller
     }
 
     // POST /api/v1/productos-terminados/{id}/presentaciones
+    /**
+     * @OA\Post(path="/productos-terminados/{id}/presentaciones", summary="Crear presentación",
+     *     tags={"Catálogo - Presentaciones"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         required={"nombre","unidades_por_presentacion"},
+     *         @OA\Property(property="nombre", type="string", example="Caja x12"),
+     *         @OA\Property(property="unidades_por_presentacion", type="integer", example=12)
+     *     )),
+     *     @OA\Response(response=201, description="Presentación creada"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere productos_terminados.escribir)")
+     * )
+     */
     public function store(CreatePresentacionRequest $request, int $productoId): JsonResponse
     {
         try {
@@ -50,6 +71,14 @@ class PresentacionController extends Controller
     }
 
     // PATCH /api/v1/presentaciones/{id}
+    /**
+     * @OA\Patch(path="/presentaciones/{id}", summary="Actualizar presentación",
+     *     tags={"Catálogo - Presentaciones"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Presentación actualizada"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere bodegas.escribir)")
+     * )
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         $request->validate([
@@ -71,6 +100,14 @@ class PresentacionController extends Controller
     }
 
     // DELETE /api/v1/presentaciones/{id}
+    /**
+     * @OA\Delete(path="/presentaciones/{id}", summary="Eliminar presentación",
+     *     tags={"Catálogo - Presentaciones"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Presentación eliminada"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
     public function destroy(int $id): JsonResponse
     {
         try {

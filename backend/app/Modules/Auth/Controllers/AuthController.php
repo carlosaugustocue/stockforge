@@ -13,36 +13,52 @@ use App\Shared\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * AuthController — Controlador del módulo de autenticación
- *
- * SOLID-SRP: el controller solo orquesta — recibe la petición HTTP,
- * delega al Service y retorna la respuesta JSON.
- * No contiene lógica de negocio ni acceso directo a la base de datos.
- *
- * El trait ApiResponseTrait garantiza respuestas JSON consistentes en toda la API.
- */
 class AuthController extends Controller
 {
     use ApiResponseTrait;
 
-    /**
-     * Inyección de dependencia del AuthService.
-     * El Service encapsula toda la lógica de negocio de autenticación.
-     */
     public function __construct(
         private AuthService $authService
     ) {}
 
     // -----------------------------------------------------------------------
-    // POST /api/auth/login
+    // POST /api/v1/auth/login
     // -----------------------------------------------------------------------
 
     /**
-     * Procesa el inicio de sesión.
-     * Ruta pública — no requiere token de autenticación.
-     *
-     * @return JsonResponse HTTP 200 con token | HTTP 401 si las credenciales fallan
+     * @OA\Post(
+     *     path="/auth/login",
+     *     summary="Iniciar sesión",
+     *     description="Autentica al usuario y retorna un token Bearer de Sanctum.",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email","password"},
+     *             @OA\Property(property="email", type="string", format="email", example="admin@inventario.test"),
+     *             @OA\Property(property="password", type="string", format="password", example="Admin1234!")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Login exitoso",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Inicio de sesión exitoso."),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="token", type="string", example="1|abc123..."),
+     *                 @OA\Property(property="rol", type="string", example="administrador"),
+     *                 @OA\Property(property="usuario", type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="Admin"),
+     *                     @OA\Property(property="email", type="string", example="admin@inventario.test")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Credenciales inválidas o cuenta bloqueada"),
+     *     @OA\Response(response=422, description="Error de validación")
+     * )
      */
     public function login(LoginRequest $request): JsonResponse
     {
@@ -67,14 +83,19 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // POST /api/auth/logout
+    // POST /api/v1/auth/logout
     // -----------------------------------------------------------------------
 
     /**
-     * Cierra la sesión del usuario autenticado.
-     * Ruta protegida — requiere token Sanctum válido.
-     *
-     * @return JsonResponse HTTP 200 con mensaje de confirmación
+     * @OA\Post(
+     *     path="/auth/logout",
+     *     summary="Cerrar sesión",
+     *     description="Revoca el token Bearer actual del usuario autenticado.",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Sesión cerrada exitosamente"),
+     *     @OA\Response(response=401, description="Token inválido o no proporcionado")
+     * )
      */
     public function logout(Request $request): JsonResponse
     {
@@ -88,18 +109,21 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // GET /api/auth/me
+    // GET /api/v1/auth/me
     // -----------------------------------------------------------------------
 
     /**
-     * Retorna los datos del usuario autenticado actualmente.
-     * Ruta protegida — requiere token Sanctum válido.
-     *
-     * @return JsonResponse HTTP 200 con datos del usuario
+     * @OA\Get(
+     *     path="/auth/me",
+     *     summary="Datos del usuario autenticado",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Datos del usuario autenticado"),
+     *     @OA\Response(response=401, description="No autenticado")
+     * )
      */
     public function me(Request $request): JsonResponse
     {
-        // Cargar la relación 'role' para incluir el nombre del rol en la respuesta
         $user = $request->user()->load('role');
 
         return $this->successResponse(
@@ -109,14 +133,32 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // POST /api/auth/usuarios
+    // POST /api/v1/auth/usuarios
     // -----------------------------------------------------------------------
 
     /**
-     * Crea un nuevo usuario en el sistema.
-     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
-     *
-     * @return JsonResponse HTTP 201 con el usuario creado | HTTP 500 si hay error
+     * @OA\Post(
+     *     path="/auth/usuarios",
+     *     summary="Crear usuario",
+     *     description="Solo administrador. Crea un nuevo usuario en el sistema.",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name","email","password","password_confirmation","role_id"},
+     *             @OA\Property(property="name", type="string", example="Juan Pérez"),
+     *             @OA\Property(property="email", type="string", format="email", example="juan@inventario.test"),
+     *             @OA\Property(property="password", type="string", example="Password123!"),
+     *             @OA\Property(property="password_confirmation", type="string", example="Password123!"),
+     *             @OA\Property(property="role_id", type="integer", example=2)
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Usuario creado"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere rol administrador)"),
+     *     @OA\Response(response=422, description="Error de validación")
+     * )
      */
     public function crearUsuario(CreateUserRequest $request): JsonResponse
     {
@@ -134,14 +176,20 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // GET /api/auth/usuarios
+    // GET /api/v1/auth/usuarios
     // -----------------------------------------------------------------------
 
     /**
-     * Lista todos los usuarios del sistema con su rol asignado.
-     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
-     *
-     * @return JsonResponse HTTP 200 con la colección de usuarios
+     * @OA\Get(
+     *     path="/auth/usuarios",
+     *     summary="Listar usuarios",
+     *     description="Solo administrador. Lista todos los usuarios del sistema.",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Listado de usuarios"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
      */
     public function listarUsuarios(): JsonResponse
     {
@@ -154,15 +202,31 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // PATCH /api/auth/usuarios/{id}
+    // PATCH /api/v1/auth/usuarios/{id}
     // -----------------------------------------------------------------------
 
     /**
-     * Actualiza los datos de un usuario existente (PATCH semántico).
-     * Permite cambiar nombre, email, rol y estado activo.
-     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
-     *
-     * @return JsonResponse HTTP 200 con el usuario actualizado | HTTP 404 | HTTP 500
+     * @OA\Patch(
+     *     path="/auth/usuarios/{id}",
+     *     summary="Actualizar usuario",
+     *     description="Solo administrador. Actualiza nombre, email, rol o estado activo.",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string", example="Nuevo Nombre"),
+     *             @OA\Property(property="email", type="string", example="nuevo@inventario.test"),
+     *             @OA\Property(property="role_id", type="integer", example=3),
+     *             @OA\Property(property="activo", type="boolean", example=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Usuario actualizado"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=404, description="Usuario no encontrado"),
+     *     @OA\Response(response=422, description="Error de validación")
+     * )
      */
     public function actualizarUsuario(UpdateUserRequest $request, int $id): JsonResponse
     {
@@ -182,15 +246,20 @@ class AuthController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // GET /api/roles
+    // GET /api/v1/roles
     // -----------------------------------------------------------------------
 
     /**
-     * Lista todos los roles disponibles en el sistema.
-     * Usado por el frontend para poblar el selector de rol al crear/editar usuarios.
-     * Ruta protegida + solo ADMINISTRADOR (middleware 'role:administrador').
-     *
-     * @return JsonResponse HTTP 200 con la lista de roles
+     * @OA\Get(
+     *     path="/roles",
+     *     summary="Listar roles",
+     *     description="Solo administrador. Retorna todos los roles disponibles.",
+     *     tags={"Auth"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Listado de roles"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
      */
     public function listarRoles(): JsonResponse
     {

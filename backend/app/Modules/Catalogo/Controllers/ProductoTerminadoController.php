@@ -29,6 +29,13 @@ class ProductoTerminadoController extends Controller
     ) {}
 
     // GET /api/v1/productos-terminados
+    /**
+     * @OA\Get(path="/productos-terminados", summary="Listar productos terminados",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Listado de PT activos"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere productos_terminados.leer)")
+     * )
+     */
     public function index(): JsonResponse
     {
         return $this->successResponse(
@@ -38,6 +45,14 @@ class ProductoTerminadoController extends Controller
     }
 
     // GET /api/v1/productos-terminados/{id}
+    /**
+     * @OA\Get(path="/productos-terminados/{id}", summary="Ver producto terminado",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Detalle del PT"),
+     *     @OA\Response(response=404, description="No encontrado")
+     * )
+     */
     public function show(int $id): JsonResponse
     {
         try {
@@ -51,6 +66,18 @@ class ProductoTerminadoController extends Controller
     }
 
     // POST /api/v1/productos-terminados
+    /**
+     * @OA\Post(path="/productos-terminados", summary="Crear producto terminado",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         required={"nombre","unidad_medida_id"},
+     *         @OA\Property(property="nombre", type="string", example="Torta de chocolate"),
+     *         @OA\Property(property="unidad_medida_id", type="integer", example=2)
+     *     )),
+     *     @OA\Response(response=201, description="PT creado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere productos_terminados.escribir)")
+     * )
+     */
     public function store(CreateProductoTerminadoRequest $request): JsonResponse
     {
         try {
@@ -65,6 +92,14 @@ class ProductoTerminadoController extends Controller
     }
 
     // PATCH /api/v1/productos-terminados/{id}
+    /**
+     * @OA\Patch(path="/productos-terminados/{id}", summary="Actualizar producto terminado",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="PT actualizado"),
+     *     @OA\Response(response=404, description="No encontrado")
+     * )
+     */
     public function update(UpdateProductoTerminadoRequest $request, int $id): JsonResponse
     {
         try {
@@ -80,6 +115,14 @@ class ProductoTerminadoController extends Controller
     }
 
     // DELETE /api/v1/productos-terminados/{id}
+    /**
+     * @OA\Delete(path="/productos-terminados/{id}", summary="Eliminar producto terminado",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="PT eliminado"),
+     *     @OA\Response(response=404, description="No encontrado")
+     * )
+     */
     public function destroy(int $id): JsonResponse
     {
         try {
@@ -95,6 +138,13 @@ class ProductoTerminadoController extends Controller
     }
 
     // GET /api/v1/productos-terminados/{id}/materias-primas
+    /**
+     * @OA\Get(path="/productos-terminados/{id}/materias-primas", summary="Materias primas de un PT",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="MP asociadas con cantidades requeridas")
+     * )
+     */
     public function listarMateriasPrimas(int $id): JsonResponse
     {
         try {
@@ -110,6 +160,19 @@ class ProductoTerminadoController extends Controller
     }
 
     // POST /api/v1/productos-terminados/{id}/materias-primas
+    /**
+     * @OA\Post(path="/productos-terminados/{id}/materias-primas", summary="Asociar MP a PT",
+     *     tags={"Catálogo - Productos Terminados"}, security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         required={"materia_prima_id","cantidad_requerida"},
+     *         @OA\Property(property="materia_prima_id", type="integer", example=1),
+     *         @OA\Property(property="cantidad_requerida", type="number", example=2.5)
+     *     )),
+     *     @OA\Response(response=201, description="MP asociada"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere productos_terminados.escribir)")
+     * )
+     */
     public function asociarMateriaPrima(AsociarMpRequest $request, int $id): JsonResponse
     {
         try {
