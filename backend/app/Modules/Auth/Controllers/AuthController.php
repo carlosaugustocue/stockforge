@@ -70,9 +70,8 @@ class AuthController extends Controller
             );
 
             return $this->successResponse([
-                'usuario' => new UserResource($resultado['usuario']),
-                'token'   => $resultado['token'],
-                'rol'     => $resultado['rol'],
+                'token' => $resultado['token'],
+                'rol'   => $resultado['rol'],
             ], 'Inicio de sesión exitoso.');
 
         } catch (\Exception $e) {
