@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { obtenerSesion, limpiarSesion, logout, Usuario } from '@/lib/session';
+import Sidebar from '@/components/dashboard/Sidebar';
 // import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
 
 const ETIQUETA_ROL: Record<string, string> = {
@@ -39,10 +40,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!usuario) return null;
 
   return (
-    <div className="min-h-screen overflow-y-auto" style={{ background: 'var(--bg-right)' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg-right)' }}>
 
       {/* Navbar */}
-      <nav className="shadow-lg sticky top-0 z-50 overflow-visible" style={{ background: 'var(--primary)' }}>
+      <nav className="shadow-lg z-50 overflow-visible flex-shrink-0" style={{ background: 'var(--primary)' }}>
         <div className="max-w-[1600px] mx-auto px-6 sm:px-10 lg:px-16 relative">
           <div className="flex items-center justify-between h-20">
 
@@ -107,43 +108,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Franja decorativa */}
-      <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary), var(--primary))' }} />
+      <div className="h-1 w-full flex-shrink-0" style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary), var(--primary))' }} />
 
-      {/* Contenido con figuras de fondo decorativas mejoradas (Estilo Login) */}
-      <main className="max-w-[1600px] mx-auto px-6 sm:px-10 lg:px-16 py-10 animate-fade relative z-10">
+      {/* Cuerpo: sidebar + contenido */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
 
-        {/* Figuras Decorativas de Fondo Dinámicas */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1]">
-          {/* Manchas de color difusas (Glow) */}
-          <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-20"
-            style={{ background: 'var(--primary)' }} />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full blur-[100px] opacity-15"
-            style={{ background: 'var(--secondary)' }} />
-          <div className="absolute top-[40%] left-[20%] w-[30%] h-[30%] rounded-full blur-[150px] opacity-10"
-            style={{ background: 'var(--primary)' }} />
+        <main className="flex-1 overflow-y-auto px-6 sm:px-8 lg:px-10 py-8 animate-fade relative">
+          {/* Fondo decorativo sutil */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1]">
+            <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-10"
+              style={{ background: 'var(--primary)' }} />
+            <div className="absolute bottom-[-10%] left-[20%] w-[30%] h-[30%] rounded-full blur-[150px] opacity-8"
+              style={{ background: 'var(--secondary)' }} />
+            <div className="absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage: `linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)`,
+                backgroundSize: '80px 80px',
+              }} />
+          </div>
 
-          {/* Líneas y Figuras Geométricas Definidas */}
-          <div className="absolute top-[15%] right-[10%] w-[400px] h-[400px] border-[1px] border-primary/10 rounded-full" />
-          <div className="absolute top-[12%] right-[12%] w-[300px] h-[300px] border-[1px] border-primary/5 rounded-full" />
-
-          <div className="absolute bottom-[20%] left-[5%] w-[250px] h-[250px] border-[1px] border-primary/10 rotate-45" />
-          <div className="absolute bottom-[18%] left-[7%] w-[250px] h-[250px] border-[1px] border-primary/5 rotate-[60deg]" />
-
-          {/* Patrón de Grilla / Puntos más marcado */}
-          <div className="absolute inset-0 opacity-[0.05]"
-            style={{
-              backgroundImage: `linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)`,
-              backgroundSize: '100px 100px'
-            }} />
-          <div className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: `radial-gradient(circle, var(--primary) 2px, transparent 2px)`,
-              backgroundSize: '30px 30px'
-            }} />
-        </div>
-
-        {children}
-      </main>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

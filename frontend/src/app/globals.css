@@ -12,8 +12,9 @@
 }
 
 body {
-  @apply antialiased overflow-hidden;
+  @apply antialiased;
   color: var(--text-main);
+  overflow: hidden; /* El scroll lo maneja el <main> interno del layout */
 }
 
 /* FONDO DIAGONAL LIMPIO 50/50 */

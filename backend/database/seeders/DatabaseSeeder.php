@@ -27,6 +27,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             UnidadMedidaSeeder::class,
             BodegaSeeder::class,
+            MateriaPrimaSeeder::class,
+            ProductoTerminadoSeeder::class,
+            DemoDataSeeder::class,
         ]);
     }
 }
