@@ -1,6 +1,6 @@
 'use client';
 
-import { obtenerSesion } from '@/lib/session';
+import { obtenerSesion, limpiarSesion } from '@/lib/session';
 
 /** Base URL — NEXT_PUBLIC_API_URL debe incluir /v1, ej: http://localhost:8000/api/v1 */
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
@@ -32,6 +32,10 @@ export async function apiFetch<T = unknown>(
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      limpiarSesion();
+      if (typeof window !== 'undefined') window.location.href = '/login';
+    }
     const body = await res
       .json()
       .catch(() => ({ message: `Error HTTP ${res.status}` }));

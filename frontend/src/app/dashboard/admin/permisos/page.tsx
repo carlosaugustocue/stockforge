@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { RefreshCw, Check, Minus } from 'lucide-react';
 import { adminService } from '@/services/admin.service';
 
@@ -131,8 +131,8 @@ export default function PermisosPage() {
               </thead>
               <tbody>
                 {Object.entries(grupos).map(([recurso, perms]) => (
-                  <>
-                    <tr key={`grupo-${recurso}`} className="border-b border-black/5">
+                  <Fragment key={recurso}>
+                    <tr className="border-b border-black/5">
                       <td colSpan={roles.length + 1}
                         className="px-5 py-2 text-[9px] font-black uppercase tracking-widest bg-black/3"
                         style={{ color: 'var(--text-muted)', backgroundColor: 'rgba(0,0,0,0.03)' }}>
@@ -173,7 +173,7 @@ export default function PermisosPage() {
                         })}
                       </tr>
                     ))}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
