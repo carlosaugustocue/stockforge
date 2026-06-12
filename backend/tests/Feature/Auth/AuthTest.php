@@ -57,15 +57,15 @@ test('test_login_exitoso_retorna_token', function () {
             'success',
             'message',
             'data' => [
-                'usuario',
                 'token',
                 'rol',
             ],
         ])
         ->assertJson(['success' => true]);
 
-    // El token no debe estar vacío
+    // Verificar que el token no está vacío y que NO se expone el objeto usuario
     expect($response->json('data.token'))->not->toBeEmpty();
+    expect($response->json('data.usuario'))->toBeNull();
 });
 
 // -----------------------------------------------------------------------

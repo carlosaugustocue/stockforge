@@ -12,21 +12,21 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    usuario: Usuario;
     token: string;
     rol: string;
   };
 }
 
 /**
- * Realiza la petición de login al backend Laravel
+ * Paso 1 — obtiene token y rol (mínimo necesario para autenticar).
+ * Lanza Error con el mensaje del backend en caso de fallo.
  */
 export async function loginUser(credentials: LoginCredentials): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json"
+      "Accept": "application/json",
     },
     body: JSON.stringify(credentials),
   });
@@ -37,4 +37,24 @@ export async function loginUser(credentials: LoginCredentials): Promise<LoginRes
   }
 
   return response.json();
+}
+
+/**
+ * Paso 2 — obtiene el perfil completo del usuario autenticado.
+ * Se llama inmediatamente después de loginUser con el token recibido.
+ */
+export async function fetchMe(token: string): Promise<Usuario> {
+  const response = await fetch(`${API_URL}/auth/me`, {
+    headers: {
+      "Accept": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo obtener el perfil del usuario.");
+  }
+
+  const json = await response.json();
+  return json.data as Usuario;
 }

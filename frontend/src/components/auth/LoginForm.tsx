@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthInput from "../ui/AuthInput";
-import { loginUser } from "@/services/auth.service";
+import { loginUser, fetchMe } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { guardarSesion, rutaPorRol } from "@/lib/session";
 
@@ -24,9 +24,10 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const response = await loginUser({ email, password });
-      guardarSesion(response.data.token, response.data.usuario);
-      router.push(rutaPorRol(response.data.rol));
+      const { data } = await loginUser({ email, password });
+      const usuario = await fetchMe(data.token);
+      guardarSesion(data.token, usuario);
+      router.push(rutaPorRol(data.rol));
     } catch (err: any) {
       setError(err.message || "Error al conectar con el servidor.");
     } finally {
