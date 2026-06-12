@@ -5,6 +5,7 @@ import { ArrowLeftRight, RefreshCw, History } from 'lucide-react';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
 import { catalogoService, type Bodega } from '@/services/catalogo.service';
 import { reportesService } from '@/services/reportes.service';
+import { formatNum } from '@/lib/utils';
 
 type Resultado = { mensaje: string; ok: boolean } | null;
 
@@ -63,7 +64,7 @@ export default function TrasladosPage() {
   const lotesDisponibles = mpSeleccionada
     ? mpSeleccionada.por_bodega.flatMap(b =>
         b.lotes_activos > 0
-          ? [{ id: `${b.bodega_id}`, label: `${b.bodega} — ${b.stock} ${mpSeleccionada.unidad_medida}`, bodega_origen_id: b.bodega_id }]
+          ? [{ id: `${b.bodega_id}`, label: `${b.bodega} — ${formatNum(b.stock)} ${mpSeleccionada.unidad_medida}`, bodega_origen_id: b.bodega_id }]
           : []
       )
     : [];
@@ -134,7 +135,7 @@ export default function TrasladosPage() {
                 <option value="">— Seleccionar MP —</option>
                 {stock.map(mp => (
                   <option key={mp.materia_prima_id} value={mp.materia_prima_id}>
-                    {mp.nombre} ({mp.stock_total} {mp.unidad_medida})
+                    {mp.nombre} ({formatNum(mp.stock_total)} {mp.unidad_medida})
                   </option>
                 ))}
               </select>
@@ -242,7 +243,7 @@ export default function TrasladosPage() {
                       </td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{m.bodega}</td>
                       <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-main)' }}>
-                        {m.cantidad.toLocaleString('es-CO')}
+                        {formatNum(m.cantidad)}
                       </td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{m.usuario}</td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>

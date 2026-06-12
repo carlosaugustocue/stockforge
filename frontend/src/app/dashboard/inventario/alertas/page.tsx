@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeftRight, RefreshCw } from 'lucide-react';
 import { inventarioService, type AlertaMp } from '@/services/inventario.service';
+import { formatNum } from '@/lib/utils';
 
 export default function AlertasPage() {
   const [alertas, setAlertas] = useState<AlertaMp[]>([]);
@@ -90,14 +91,14 @@ export default function AlertasPage() {
                       <p className="text-[10px] uppercase" style={{ color: 'var(--text-muted)' }}>{mp.unidad_medida}</p>
                     </td>
                     <td className="px-5 py-3 text-right font-bold text-red-600">
-                      {mp.stock_total.toLocaleString('es-CO')}
+                      {formatNum(mp.stock_total)}
                     </td>
                     <td className="px-5 py-3 text-right font-bold" style={{ color: 'var(--text-muted)' }}>
-                      {mp.punto_reorden.toLocaleString('es-CO')}
+                      {formatNum(mp.punto_reorden)}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className="font-black text-red-700 bg-red-100 px-2 py-0.5 rounded text-xs">
-                        -{mp.faltante.toLocaleString('es-CO')} {mp.unidad_medida}
+                        -{formatNum(mp.faltante)} {mp.unidad_medida}
                       </span>
                     </td>
                     <td className="px-5 py-3">

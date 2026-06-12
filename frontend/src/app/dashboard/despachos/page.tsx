@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, Plus, X } from 'lucide-react';
 import { despachosService } from '@/services/despachos.service';
 import { reportesService } from '@/services/reportes.service';
+import { formatNum } from '@/lib/utils';
 
 interface DespachoRaw {
   id: number;
@@ -129,7 +130,7 @@ export default function DespachosPage() {
                     <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>
                       {d.lote_pt?.producto_terminado?.nombre ?? '—'}
                     </td>
-                    <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{d.cantidad}</td>
+                    <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{formatNum(d.cantidad)}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{d.referencia_cliente ?? '—'}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                       {new Date(d.created_at).toLocaleDateString('es-CO')}
@@ -178,13 +179,13 @@ export default function DespachosPage() {
                       <option value="">— Seleccionar lote —</option>
                       {lotesPt.map(l => (
                         <option key={l.lote_id} value={l.lote_id}>
-                          {l.producto_terminado} — {l.cantidad_actual.toLocaleString('es-CO')} {l.unidad_medida} ({l.bodega})
+                          {l.producto_terminado} — {formatNum(l.cantidad_actual)} {l.unidad_medida} ({l.bodega})
                         </option>
                       ))}
                     </select>
                     {loteSeleccionado && (
                       <p className="text-[10px] mt-1 font-bold text-green-700">
-                        Disponible: {loteSeleccionado.cantidad_actual.toLocaleString('es-CO')} {loteSeleccionado.unidad_medida}
+                        Disponible: {formatNum(loteSeleccionado.cantidad_actual)} {loteSeleccionado.unidad_medida}
                       </p>
                     )}
                   </div>

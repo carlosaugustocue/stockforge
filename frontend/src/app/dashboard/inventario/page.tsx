@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Scale, AlertTriangle, RefreshCw } from 'lucide-react';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
+import { formatNum } from '@/lib/utils';
 
 export default function StockMpPage() {
   const [stock,   setStock]   = useState<StockMp[]>([]);
@@ -89,7 +90,7 @@ export default function StockMpPage() {
               {/* Stock total */}
               <div className="flex items-baseline gap-1 mb-3">
                 <span className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-                  {mp.stock_total.toLocaleString('es-CO')}
+                  {formatNum(mp.stock_total)}
                 </span>
                 <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                   {mp.unidad_medida} totales
@@ -100,7 +101,7 @@ export default function StockMpPage() {
               <div className="flex items-center justify-between text-xs mb-3">
                 <span style={{ color: 'var(--text-muted)' }}>Punto de reorden:</span>
                 <span className="font-black" style={{ color: 'var(--text-main)' }}>
-                  {mp.punto_reorden} {mp.unidad_medida}
+                  {formatNum(mp.punto_reorden)} {mp.unidad_medida}
                 </span>
               </div>
 
@@ -114,7 +115,7 @@ export default function StockMpPage() {
                       </span>
                       <div className="text-right">
                         <span className="font-black" style={{ color: 'var(--text-main)' }}>
-                          {b.stock.toLocaleString('es-CO')} {mp.unidad_medida}
+                          {formatNum(b.stock)} {mp.unidad_medida}
                         </span>
                         {b.proximo_vencimiento && (
                           <p className="text-[9px] text-orange-500 font-bold">
