@@ -31,8 +31,8 @@ export default function LoginRight() {
             {/* Imagen del Logo */}
             <div className="relative w-full h-full rounded-full overflow-hidden bg-white">
               <Image
-                src="/login/logo.png"
-                alt="Logo IPN DEV Pastelería"
+                src="/logo/Logo-Daluzed-SF.png"
+                alt="Pastelería Daluzed Logo"
                 fill
                 className="object-cover"
                 priority

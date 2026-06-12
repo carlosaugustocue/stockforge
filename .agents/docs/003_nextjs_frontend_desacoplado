@@ -1,0 +1,139 @@
+# ADR-003: Usar Next.js 14 como frontend desacoplado con comunicación via API REST
+
+- **Estado:** Aceptado
+- **Fecha:** 2026-05-10
+- **Autores:** Equipo Proyecto Nuclear I-2026
+- **Proyecto:** Sistema de Gestión de Inventario y Logística — CUE
+
+---
+
+## Contexto
+
+El sistema requiere una interfaz web que permita a cinco roles distintos (Administrador,
+Gerencia, Jefe de Producción, Encargado de Inventarios y usuarios de solo lectura) operar
+el inventario, registrar recepciones, visualizar KPIs en tiempo real y recibir alertas.
+
+Las restricciones relevantes para esta decisión son:
+
+- **Responsive obligatorio:** RNFUSA-01 exige que la interfaz sea usable en anchos de
+  360 px, 768 px y 1280 px. El personal operativo usará dispositivos móviles en bodega.
+- **Actualización en tiempo real:** RFIND07 requiere que el panel de alertas se actualice
+  al cambiar la condición, sin recarga manual de página.
+- **Accesibilidad:** RNFACC-01 exige WCAG 2.1 nivel AA con score ≥ 90 en módulos
+  principales (Lighthouse / axe-core).
+- **Seguridad de comunicación:** RNFSEC-02 exige HTTPS/TLS en toda comunicación
+  cliente-servidor; el frontend se autenticará con JWT (visible en el diagrama:
+  API REST · JSON + JWT · HTTPS).
+- **Despliegue independiente:** el diagrama muestra el frontend desplegado en Vercel/CDN,
+  separado del backend Laravel en su propio servidor/contenedor.
+- **Curva de aprendizaje:** el equipo tiene experiencia en React; adoptar un framework
+  completamente nuevo representa un riesgo para el cronograma de tres cortes.
+
+---
+
+## Alternativas consideradas
+
+### Opción A — Next.js 14 con App Router (elegida)
+
+Framework React con renderizado híbrido (SSR, SSG, Client Components). Despliegue nativo
+en Vercel con CDN global. Soporte first-class de TypeScript, optimización de imágenes,
+rutas de API opcionales y accesibilidad mediante componentes estándar de React.
+
+### Opción B — Vue 3 + Nuxt 3
+
+Framework progresivo con SSR via Nuxt. Similar en capacidades a Next.js. Menor adopción
+en el equipo; curva de aprendizaje adicional para la sintaxis de Composition API.
+
+### Opción C — Angular 17
+
+Framework full-featured con tipado estático fuerte. Mayor verbosidad y curva de aprendizaje
+pronunciada. Más adecuado para equipos grandes con contratos de largo plazo.
+
+### Opción D — SPA con React puro (Vite + React Router)
+
+Sin SSR. Toda la renderización ocurre en el cliente. Más simple de configurar pero sin
+optimización de carga inicial ni SEO (irrelevante aquí), y sin estructura de rutas
+tipadas out-of-the-box.
+
+---
+
+## Decisión
+
+Se adopta **Next.js 14 con App Router** como frontend, desplegado en Vercel/CDN y
+comunicado con el backend Laravel exclusivamente mediante API REST (JSON + JWT + HTTPS).
+
+**Justificación:**
+
+1. **Familiaridad del equipo con React:** Next.js extiende React con convenciones de rutas
+   y layouts, no reemplaza la API de React. El equipo puede ser productivo desde el
+   Sprint 1 sin curva de aprendizaje significativa.
+
+2. **Server Components para dashboards pesados:** los KPIs gerenciales (RFIND01, RFIND02,
+   RFIND03) pueden renderizarse en el servidor, reduciendo el JavaScript enviado al
+   cliente y cumpliendo RNFPER-02 (dashboard ≤ 5 segundos).
+
+3. **Client Components para tiempo real:** el panel de alertas (RFIND07) se implementa
+   como Client Component con polling o WebSocket, sin bloquear la navegación del resto
+   de la aplicación.
+
+4. **Despliegue en Vercel:** CDN global reduce la latencia para usuarios en Colombia
+   (RNFPOR-01). El pipeline CI/CD de Vercel se activa automáticamente con cada PR,
+   integrándose con RNFMAN-04.
+
+5. **Accesibilidad:** el ecosistema React + Radix UI / shadcn/ui provee componentes
+   accesibles por defecto, facilitando el cumplimiento de RNFACC-01 sin esfuerzo manual
+   de ARIA.
+
+6. **Separación clara de responsabilidades:** el frontend no contiene lógica de negocio.
+   Toda validación crítica (stock insuficiente, orden previa a recepción) ocurre en el
+   backend, siguiendo RNFMAN-01 (principios SOLID y separación de capas).
+
+7. **La Opción B fue descartada** por la curva de aprendizaje de Nuxt/Vue en un equipo
+   con experiencia React, sin beneficio técnico diferenciador para este sistema.
+
+8. **La Opción C fue descartada** por la verbosidad de Angular y el tiempo de configuración
+   inicial incompatible con el cronograma del Corte 1.
+
+9. **La Opción D fue descartada** porque sin SSR el dashboard de KPIs tendría tiempo de
+   carga inicial mayor, y la ausencia de estructura de rutas convencional dificultaría
+   el mantenimiento del sistema de permisos por rol.
+
+---
+
+## Consecuencias
+
+### Positivas
+
+- Despliegue del frontend totalmente independiente del backend; se puede actualizar la UI
+  sin redesplegar Laravel.
+- CDN en Vercel garantiza disponibilidad durante el horario operativo (RNFAVA-01) sin
+  configuración adicional de infraestructura.
+- La API REST como contrato explícito entre frontend y backend facilita las pruebas
+  unitarias de cada capa por separado (RNFMAN-02).
+- TypeScript nativo en Next.js 14 reduce errores de integración con los tipos del API.
+
+### Negativas / Riesgos
+
+- **Complejidad de autenticación JWT entre dominios:** el token JWT debe manejarse de forma
+  segura (httpOnly cookies o memoria, no localStorage) para evitar XSS. Mitigación:
+  usar `next-auth` o middleware de Next.js para gestión del token; documentar en ADR de
+  seguridad.
+- **Hidratación (hydration mismatch):** mezclar Server y Client Components puede generar
+  errores sutiles de hidratación. Mitigación: seguir la convención de colocar directiva
+  `"use client"` solo donde se requiera estado o efectos.
+- **Vendor lock-in con Vercel:** algunas características avanzadas de Next.js (Edge
+  Functions, ISR) son óptimas en Vercel pero degradan en otros proveedores. Para el MVP
+  académico esto es aceptable; se documenta como riesgo si el cliente migra de host.
+
+---
+
+## Referencias
+
+- SRS §5.4 RNFUSA-01 — responsive en 360/768/1280 px
+- SRS §5.5 RNFACC-01 — WCAG 2.1 nivel AA
+- SRS §5.3 RNFSEC-02 — HTTPS/TLS en toda comunicación
+- SRS §4.7 RFIND07 — panel de alertas en tiempo real sin recarga
+- SRS §5.1 RNFPER-02 — dashboard ≤ 5 segundos
+- SRS §5.6 RNFMAN-01, RNFMAN-04 — SOLID y pipeline CI/CD
+- SRS §5.9 RNFPOR-01 — despliegue cloud accesible desde Colombia
+- Diagrama de Arquitectura de Alto Nivel — Capa Presentación: Next.js 14 + Vercel/CDN

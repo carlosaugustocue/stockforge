@@ -1,0 +1,2523 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "IPN-DEV — Sistema de Inventario Daluzed Pastelería",
+        "description": "API REST para gestión de inventario, producción y logística de Daluzed Pastelería. Proyecto Nuclear 3 · Corporación Universitaria Alexander von Humboldt (CUE).",
+        "contact": {
+            "name": "Equipo IPN-DEV",
+            "email": "admin@inventario.test"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "API v1"
+        }
+    ],
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión",
+                "description": "Autentica al usuario y retorna un token Bearer de Sanctum.",
+                "operationId": "b5fcf3db532eec2ba30adddcf9d044c9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@inventario.test"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Admin1234!"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Inicio de sesión exitoso."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string",
+                                                    "example": "1|abc123..."
+                                                },
+                                                "rol": {
+                                                    "type": "string",
+                                                    "example": "administrador"
+                                                },
+                                                "usuario": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Admin"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "admin@inventario.test"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales inválidas o cuenta bloqueada"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Cerrar sesión",
+                "description": "Revoca el token Bearer actual del usuario autenticado.",
+                "operationId": "c3b8babd47b9ebd33bcee8985a73a8a4",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada exitosamente"
+                    },
+                    "401": {
+                        "description": "Token inválido o no proporcionado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Datos del usuario autenticado",
+                "operationId": "bc275eba9d387567c018750de063a031",
+                "responses": {
+                    "200": {
+                        "description": "Datos del usuario autenticado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/auth/usuarios": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Listar usuarios",
+                "description": "Solo administrador. Lista todos los usuarios del sistema.",
+                "operationId": "6ce3d039d64880475dbfd1381d36adb7",
+                "responses": {
+                    "200": {
+                        "description": "Listado de usuarios"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Crear usuario",
+                "description": "Solo administrador. Crea un nuevo usuario en el sistema.",
+                "operationId": "108416f0eca1e071a77732512e84e4fd",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation",
+                                    "role_id"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Juan Pérez"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "juan@inventario.test"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "Password123!"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "Password123!"
+                                    },
+                                    "role_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Usuario creado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere rol administrador)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/auth/usuarios/{id}": {
+            "patch": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Actualizar usuario",
+                "description": "Solo administrador. Actualiza nombre, email, rol o estado activo.",
+                "operationId": "84c267e0bba5d887c7a133cf3322eb5c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Nuevo Nombre"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "nuevo@inventario.test"
+                                    },
+                                    "role_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "activo": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Usuario actualizado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/roles": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Listar roles",
+                "description": "Solo administrador. Retorna todos los roles disponibles.",
+                "operationId": "0bb8a9f8d7cdc4248fc24d66aad7affd",
+                "responses": {
+                    "200": {
+                        "description": "Listado de roles"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/bitacora": {
+            "get": {
+                "tags": [
+                    "Bitácora"
+                ],
+                "summary": "Consultar bitácora de accesos",
+                "description": "Solo administrador. Lista los eventos de autenticación con filtros opcionales.",
+                "operationId": "f815889defb315ddc591f99ed093576e",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "accion",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "login_exitoso",
+                                "login_fallido",
+                                "logout",
+                                "cuenta_bloqueada"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Registros paginados de la bitácora"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere rol administrador)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/bodegas": {
+            "get": {
+                "tags": [
+                    "Catálogo - Bodegas"
+                ],
+                "summary": "Listar bodegas",
+                "operationId": "dff03f0248a8bb557be8a6609423ffd1",
+                "responses": {
+                    "200": {
+                        "description": "Listado de bodegas"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere bodegas.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catálogo - Bodegas"
+                ],
+                "summary": "Crear bodega",
+                "operationId": "6aa023d6667e47b0dfcb41b78d2ac5f2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre",
+                                    "tipo"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Bodega Norte"
+                                    },
+                                    "tipo": {
+                                        "type": "string",
+                                        "enum": [
+                                            "principal",
+                                            "produccion",
+                                            "ventas"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Bodega creada"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere bodegas.escribir)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/bodegas/{id}": {
+            "get": {
+                "tags": [
+                    "Catálogo - Bodegas"
+                ],
+                "summary": "Ver bodega",
+                "operationId": "aadd46c5d9f025797ebfb2805ba9a2ef",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la bodega"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Catálogo - Bodegas"
+                ],
+                "summary": "Actualizar bodega",
+                "operationId": "686052f62a6e1b0aa024d8f88f1de99b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string"
+                                    },
+                                    "activa": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Bodega actualizada"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/materias-primas": {
+            "get": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Listar materias primas",
+                "operationId": "2ebf74656a08bed908819a9fb7c1064b",
+                "responses": {
+                    "200": {
+                        "description": "Listado de materias primas activas"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere materias_primas.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Crear materia prima",
+                "operationId": "d87e4680f843110f5478bedefa0a588e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre",
+                                    "unidad_medida_id",
+                                    "punto_reorden"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Harina de trigo"
+                                    },
+                                    "unidad_medida_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "punto_reorden": {
+                                        "type": "number",
+                                        "example": 50
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Materia prima creada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere materias_primas.escribir)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/materias-primas/{id}": {
+            "get": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Ver materia prima",
+                "operationId": "3f751980298ccc7a48f0c290ed41eb04",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la materia prima"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Eliminar materia prima",
+                "description": "Desactiva (soft-delete lógico) la materia prima.",
+                "operationId": "8a6d49ff5daf8ec0cb70c85725572fe1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Materia prima eliminada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Actualizar materia prima",
+                "operationId": "c2e8920295d68b343ea60e86d77494c4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string"
+                                    },
+                                    "punto_reorden": {
+                                        "type": "number"
+                                    },
+                                    "activa": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Materia prima actualizada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/materias-primas/importar": {
+            "post": {
+                "tags": [
+                    "Catálogo - Materias Primas"
+                ],
+                "summary": "Importar materias primas desde Excel",
+                "operationId": "e62d5896b5531e0e32a7039b61a01808",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "archivo"
+                                ],
+                                "properties": {
+                                    "archivo": {
+                                        "description": "Archivo Excel (.xlsx, .xls, .csv)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Materias primas importadas"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "422": {
+                        "description": "Error de validación o formato incorrecto"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/productos-terminados/{id}/presentaciones": {
+            "get": {
+                "tags": [
+                    "Catálogo - Presentaciones"
+                ],
+                "summary": "Listar presentaciones de un PT",
+                "operationId": "7e4f276d22be1ab3106ae05a2847459b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Presentaciones del producto"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere productos_terminados.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catálogo - Presentaciones"
+                ],
+                "summary": "Crear presentación",
+                "operationId": "6a948114839e78c504f470ad8cc1b9dd",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre",
+                                    "unidades_por_presentacion"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Caja x12"
+                                    },
+                                    "unidades_por_presentacion": {
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Presentación creada"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere productos_terminados.escribir)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/presentaciones/{id}": {
+            "delete": {
+                "tags": [
+                    "Catálogo - Presentaciones"
+                ],
+                "summary": "Eliminar presentación",
+                "operationId": "5a2b80f28e9673d7ba81209f4a60728d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Presentación eliminada"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Catálogo - Presentaciones"
+                ],
+                "summary": "Actualizar presentación",
+                "operationId": "d0910b670d54f526ae579458be28e551",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Presentación actualizada"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere bodegas.escribir)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/productos-terminados": {
+            "get": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Listar productos terminados",
+                "operationId": "fa12f78a19a0938e86e22864d4b8d3ce",
+                "responses": {
+                    "200": {
+                        "description": "Listado de PT activos"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere productos_terminados.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Crear producto terminado",
+                "operationId": "4d6bbc54cabaa48d2f035f7144677b1f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre",
+                                    "unidad_medida_id"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Torta de chocolate"
+                                    },
+                                    "unidad_medida_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "PT creado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere productos_terminados.escribir)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/productos-terminados/{id}": {
+            "get": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Ver producto terminado",
+                "operationId": "270f05ea9707ae191b7eeb6e84bd957f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle del PT"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Eliminar producto terminado",
+                "operationId": "cfa8b9178991ea1aeefd7e73d3697a1f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PT eliminado"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Actualizar producto terminado",
+                "operationId": "ee9dc7eced14008897716c0f49373560",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PT actualizado"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/productos-terminados/{id}/materias-primas": {
+            "get": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Materias primas de un PT",
+                "operationId": "8a0b9f3b80421c4a31a1c4d74395ea07",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MP asociadas con cantidades requeridas"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catálogo - Productos Terminados"
+                ],
+                "summary": "Asociar MP a PT",
+                "operationId": "30737bb541eed11e435b293438ea5462",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "materia_prima_id",
+                                    "cantidad_requerida"
+                                ],
+                                "properties": {
+                                    "materia_prima_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "cantidad_requerida": {
+                                        "type": "number",
+                                        "example": 2.5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "MP asociada"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere productos_terminados.escribir)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/despachos": {
+            "get": {
+                "tags": [
+                    "Despacho"
+                ],
+                "summary": "Listar despachos",
+                "operationId": "cc4f5d9e781e61f47823cbaba3c60b65",
+                "responses": {
+                    "200": {
+                        "description": "Listado de despachos"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere despachos.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Despacho"
+                ],
+                "summary": "Registrar despacho",
+                "description": "Registra la salida de un producto terminado desde Bodega Ventas hacia un cliente (RFPROD03 / HU-027).",
+                "operationId": "dc35ed7f048b2c11fe447b9f775ffceb",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "lote_pt_id",
+                                    "cantidad",
+                                    "cliente"
+                                ],
+                                "properties": {
+                                    "lote_pt_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "cantidad": {
+                                        "type": "number",
+                                        "example": 50
+                                    },
+                                    "cliente": {
+                                        "type": "string",
+                                        "example": "Supermercado La 14"
+                                    },
+                                    "observaciones": {
+                                        "type": "string",
+                                        "example": "Entrega urgente"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Despacho registrado con movimiento DESPACHO_SALIDA inmutable"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere despachos.escribir)"
+                    },
+                    "422": {
+                        "description": "Stock insuficiente o lote no en Bodega Ventas"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/despachos/{id}": {
+            "get": {
+                "tags": [
+                    "Despacho"
+                ],
+                "summary": "Ver despacho",
+                "operationId": "47964f8294e2ed469e458fe9f05bd9ff",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle del despacho"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/inventario/stock/mp": {
+            "get": {
+                "tags": [
+                    "Inventario"
+                ],
+                "summary": "Stock de todas las materias primas",
+                "description": "Retorna el stock actual de todas las MP activas con desglose por bodega y flag bajo_reorden.",
+                "operationId": "3bd0bf470e25df22256042eb1fd63c07",
+                "responses": {
+                    "200": {
+                        "description": "Stock consultado correctamente"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere inventario.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/inventario/stock/mp/{id}": {
+            "get": {
+                "tags": [
+                    "Inventario"
+                ],
+                "summary": "Stock de una materia prima por ID",
+                "operationId": "8b441dccf3411e4df83e1ce0f6a84fe5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stock de la MP"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "MP no encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/inventario/alertas": {
+            "get": {
+                "tags": [
+                    "Inventario"
+                ],
+                "summary": "Alertas de stock bajo punto de reorden",
+                "description": "Retorna las materias primas cuyo stock total es menor al punto de reorden.",
+                "operationId": "248ffd8f0f21fbf3bb8a5e5df33dbe65",
+                "responses": {
+                    "200": {
+                        "description": "Alertas de reorden"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere alertas.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/inventario/traslados": {
+            "post": {
+                "tags": [
+                    "Inventario"
+                ],
+                "summary": "Trasladar materia prima entre bodegas",
+                "description": "Mueve una cantidad de MP de un lote a otra bodega. Si es traslado total, actualiza bodega_id del lote. Si es parcial, crea un nuevo lote heredando trazabilidad (RFINV04).",
+                "operationId": "a787fdf012faaba9c70f78eda1f82e72",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "lote_id",
+                                    "bodega_destino_id",
+                                    "cantidad"
+                                ],
+                                "properties": {
+                                    "lote_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "bodega_destino_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "cantidad": {
+                                        "type": "number",
+                                        "example": 25.5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Traslado registrado con movimientos SALIDA y ENTRADA"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere inventario.escribir)"
+                    },
+                    "422": {
+                        "description": "Stock insuficiente o bodega destino igual a origen"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/permisos": {
+            "get": {
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Listar todos los permisos disponibles",
+                "description": "Solo administrador. Retorna el catálogo completo de permisos del sistema.",
+                "operationId": "a691447845e3abdabdc79da28da1afeb",
+                "responses": {
+                    "200": {
+                        "description": "Listado de permisos"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere rol administrador)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/roles/{roleId}/permisos": {
+            "get": {
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Permisos asignados a un rol",
+                "operationId": "610087b69ebaed9b8c156613dbc24d6a",
+                "parameters": [
+                    {
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permisos del rol"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "Rol no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Asignar permiso a un rol",
+                "description": "Solo administrador. Invalida la caché de permisos del rol.",
+                "operationId": "fce576da3bf16ac52fbc9d800fc6c5d9",
+                "parameters": [
+                    {
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "permission_id"
+                                ],
+                                "properties": {
+                                    "permission_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Permiso asignado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "422": {
+                        "description": "Permiso ya asignado o no existe"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/roles/{roleId}/permisos/{permissionId}": {
+            "delete": {
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Revocar permiso de un rol",
+                "description": "Solo administrador. Invalida la caché de permisos del rol.",
+                "operationId": "ce7655e1603def595a4f57c456ebe852",
+                "parameters": [
+                    {
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permiso revocado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "Asignación no encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/produccion/ordenes": {
+            "get": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Listar órdenes de producción",
+                "operationId": "a9ede6435040db6c8762b2b22bc78a8b",
+                "responses": {
+                    "200": {
+                        "description": "Listado de órdenes"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere produccion.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Crear orden de producción",
+                "description": "Etapa 1: planifica la producción de un producto terminado (RFPROD01).",
+                "operationId": "78b081c956fd40dc70fab779647d9ad6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "producto_terminado_id",
+                                    "cantidad_planificada",
+                                    "fecha_planificada"
+                                ],
+                                "properties": {
+                                    "producto_terminado_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "cantidad_planificada": {
+                                        "type": "number",
+                                        "example": 100
+                                    },
+                                    "fecha_planificada": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-06-01"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Orden creada en estado pendiente"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere produccion.escribir)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/produccion/ordenes/{id}": {
+            "get": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Ver orden de producción",
+                "operationId": "201e631d56910b4e0b4351dab56f54fa",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la orden con consumos"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/produccion/ordenes/{id}/ejecutar": {
+            "post": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Ejecutar orden de producción",
+                "description": "Etapa 2: descuenta MP de Bodega Principal usando selección FEFO (RFPROD02). Rechaza si falta stock.",
+                "operationId": "49082467cafb02fa7eeee741625c3473",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cantidad_producida"
+                                ],
+                                "properties": {
+                                    "cantidad_producida": {
+                                        "type": "number",
+                                        "example": 95
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Producción ejecutada, MP descontada, lote PT creado en Bodega Producción"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "422": {
+                        "description": "Stock insuficiente — indica qué MP falta y cuánta (RFPROD05)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/produccion/ordenes/{id}/traslado-pt": {
+            "post": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Trasladar PT a Bodega Ventas",
+                "description": "Etapa 3: mueve el producto terminado de Bodega Producción a Bodega Ventas para despacho (RFPROD03).",
+                "operationId": "a7cce888f1e64931130851a40585de0c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PT trasladado a Bodega Ventas"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "422": {
+                        "description": "Orden no ejecutada o ya trasladada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/produccion/ordenes/{id}/anular": {
+            "patch": {
+                "tags": [
+                    "Producción"
+                ],
+                "summary": "Anular orden de producción",
+                "description": "Crea movimientos compensatorios inmutables. No borra registros (HU-027).",
+                "operationId": "3fcc9bcdea8826d5272d87d9bcd74d5e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Orden anulada con movimiento compensatorio"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "422": {
+                        "description": "No se puede anular en el estado actual"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/recepciones/ordenes": {
+            "get": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Listar órdenes de pedido",
+                "operationId": "8f6a4ba374169eb8539d234a771f3d41",
+                "responses": {
+                    "200": {
+                        "description": "Listado de órdenes"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere recepciones.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Crear orden de pedido",
+                "operationId": "809c144dfb8d95d8c635fb6a0583c69a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "proveedor"
+                                ],
+                                "properties": {
+                                    "proveedor": {
+                                        "type": "string",
+                                        "example": "Harinera del Valle"
+                                    },
+                                    "fecha_esperada": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-06-15"
+                                    },
+                                    "observaciones": {
+                                        "type": "string",
+                                        "example": "Entrega urgente"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Orden creada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere recepciones.escribir)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/recepciones/ordenes/{id}": {
+            "get": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Ver orden de pedido",
+                "operationId": "b49577e1aa8b72f280132d81018a02d4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la orden"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Actualizar orden de pedido",
+                "operationId": "65c31af806ed75d5f438090b0e3b2920",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "proveedor": {
+                                        "type": "string"
+                                    },
+                                    "fecha_esperada": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "estado": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pendiente",
+                                            "en_recepcion",
+                                            "cerrada"
+                                        ]
+                                    },
+                                    "observaciones": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Orden actualizada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/recepciones": {
+            "get": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Listar recepciones",
+                "operationId": "25f26a7fe9f45c488b0be4883ffc2d08",
+                "responses": {
+                    "200": {
+                        "description": "Listado de recepciones"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/recepciones/ordenes/{id}/recepciones": {
+            "post": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Registrar recepción de materias primas",
+                "description": "Registra la entrada física de MP contra una orden de pedido. Crea lotes con trazabilidad FEFO (RFREC).",
+                "operationId": "b7c2588158024293a8211fa7c029c6ca",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la orden de pedido",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "items"
+                                ],
+                                "properties": {
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "materia_prima_id",
+                                                "cantidad"
+                                            ],
+                                            "properties": {
+                                                "materia_prima_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "cantidad": {
+                                                    "type": "number",
+                                                    "example": 100
+                                                },
+                                                "fecha_vencimiento": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-12-31"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Recepción registrada, lotes creados en Bodega Principal"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere recepciones.escribir)"
+                    },
+                    "404": {
+                        "description": "Orden no encontrada"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/recepciones/{id}": {
+            "get": {
+                "tags": [
+                    "Recepciones"
+                ],
+                "summary": "Ver recepción",
+                "operationId": "0b522b450c02bee9ed10a61624cc7e38",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la recepción con lotes creados"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/reportes/kpis": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "KPIs del mes actual",
+                "description": "Retorna indicadores clave: órdenes por estado, total despachado, MP recibida, alertas de reorden.",
+                "operationId": "b142295eb1b914ae968bbb7aa0e65829",
+                "responses": {
+                    "200": {
+                        "description": "KPIs calculados"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere reportes.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/reportes/produccion": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de producción por período",
+                "operationId": "e9f15e51677a8fbf17e37add5a81d8dd",
+                "parameters": [
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Órdenes de producción en el período"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/reportes/despachos": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de despachos por período",
+                "operationId": "1388cdee90cac4cf4eaa11ff48ebfcf1",
+                "parameters": [
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Despachos en el período"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/reportes/movimientos": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Reporte de movimientos de inventario",
+                "operationId": "2cdee8c317f299345a518fa0cad8e1a5",
+                "parameters": [
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "tipo",
+                        "in": "query",
+                        "description": "Tipo de movimiento",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "entidad_tipo",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "materia_prima",
+                                "producto_terminado"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Movimientos filtrados"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/reportes/stock-pt": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Stock actual de productos terminados",
+                "operationId": "493a13af297277a48c40e14ce8411fae",
+                "responses": {
+                    "200": {
+                        "description": "Stock de PT por bodega"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctum": {
+                "type": "http",
+                "description": "Token Bearer generado por Laravel Sanctum al hacer login. Incluirlo en el header: Authorization: Bearer {token}",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Autenticación y gestión de usuarios"
+        },
+        {
+            "name": "Catálogo - Materias Primas",
+            "description": "CRUD de materias primas"
+        },
+        {
+            "name": "Catálogo - Productos Terminados",
+            "description": "CRUD de productos terminados y sus relaciones con MP"
+        },
+        {
+            "name": "Catálogo - Bodegas",
+            "description": "CRUD de bodegas del sistema"
+        },
+        {
+            "name": "Catálogo - Presentaciones",
+            "description": "Presentaciones de productos terminados"
+        },
+        {
+            "name": "Inventario",
+            "description": "Consulta de stock, alertas de reorden y traslados entre bodegas"
+        },
+        {
+            "name": "Recepciones",
+            "description": "Órdenes de pedido y entrada de materias primas"
+        },
+        {
+            "name": "Producción",
+            "description": "Ciclo productivo completo con selección FEFO"
+        },
+        {
+            "name": "Despacho",
+            "description": "Salida de productos terminados hacia clientes"
+        },
+        {
+            "name": "Reportes",
+            "description": "KPIs y reportes de gestión"
+        },
+        {
+            "name": "Permisos",
+            "description": "Gestión de la matriz RBAC dinámica"
+        },
+        {
+            "name": "Bitácora",
+            "description": "Auditoría de accesos al sistema"
+        }
+    ]
+}

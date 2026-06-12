@@ -1,6 +1,6 @@
 "use client";
 
-import ThemeSwitcher from "../ui/ThemeSwitcher";
+// import ThemeSwitcher from "../ui/ThemeSwitcher";
 
 /**
  * Columna izquierda: Información y branding (Ajustada: más grande y más arriba)
@@ -26,10 +26,12 @@ export default function LoginLeft() {
       {/* Triángulo decorativo subido */}
       <div className="shape-left-bottom"></div>
 
-      {/* Theme Switcher Real y Funcional */}
+      {/* Theme Switcher Real y Funcional (Comentado por requerimiento de marca) */}
+      {/* 
       <div className="absolute bottom-16 left-24">
         <ThemeSwitcher />
       </div>
+      */}
     </div>
   );
 }

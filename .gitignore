@@ -10,6 +10,11 @@ frontend/yarn-error.log*
 frontend/.vercel
 
 # Laravel (backend)
+# Seeders con datos reales de la empresa — confidencial, solo en local
+backend/database/seeders/MateriaPrimaSeeder.php
+backend/database/seeders/ProductoTerminadoSeeder.php
+backend/database/seeders/DemoDataSeeder.php
+
 backend/vendor/
 backend/.env
 backend/.env.local

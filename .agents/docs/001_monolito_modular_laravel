@@ -1,0 +1,115 @@
+# ADR-001: Adoptar Monolito Modular con Laravel 12 como arquitectura del backend
+
+- **Estado:** Aceptado
+- **Fecha:** 2026-05-10
+- **Autores:** Equipo Proyecto Nuclear I-2026
+- **Proyecto:** Sistema de Gestión de Inventario y Logística — CUE
+
+---
+
+## Contexto
+
+El sistema debe gestionar inventario, recepción, producción, despacho, alertas e indicadores para
+una empresa de repostería con dos bodegas físicas separadas. El proyecto tiene un horizonte
+académico de tres cortes (21 abril – 26 junio 2026) y un equipo pequeño sin experiencia previa
+en arquitecturas distribuidas.
+
+Las restricciones determinantes son:
+
+- **Tiempo:** tres cortes académicos con entregas incrementales (AUT+CAT → INV+REC+PROD → ALR+IND+AUD).
+- **Equipo:** desarrolladores junior en formación, sin operadores DevOps dedicados.
+- **Alcance del MVP:** 8 módulos funcionales interrelacionados (RFAUT, RFCAT, RFINV, RFREC,
+  RFPROD, RFALR, RFIND, RFAUD), todos compartiendo el mismo modelo de datos transaccional.
+- **Requisito de trazabilidad:** RFAUD01 exige inmutabilidad de movimientos; RFAUD02 requiere
+  vista completa lote→producción→despacho que cruza múltiples módulos.
+- **Escalabilidad futura:** RNFESC-01 exige soporte multi-tenant lógico sin rediseño mayor.
+
+Se evaluaron tres estilos arquitectónicos para el backend.
+
+---
+
+## Alternativas consideradas
+
+### Opción A — Monolito Modular (elegida)
+
+Un único proceso desplegable organizado en módulos internos con fronteras explícitas
+(`mod:Auth`, `mod:Catalogo`, `mod:Inventario`, `mod:Recepcion`, `mod:Despacho`,
+`mod:Alertas`, `mod:Indicadores`, `mod:Auditoria`). Los módulos comparten el mismo proceso
+y base de datos, pero se comunican a través de un **Shared Kernel** definido
+(Exceptions · Events · Contracts · Base Repository), evitando dependencias directas entre
+módulos de negocio.
+
+### Opción B — Monolito tradicional (sin separación modular)
+
+Código organizado únicamente por capas técnicas (Controllers / Models / Views). Sin fronteras
+de dominio explícitas.
+
+### Opción C — Microservicios
+
+Servicios independientes por dominio, cada uno con su propio proceso, base de datos y
+despliegue.
+
+---
+
+## Decisión
+
+Se adopta la **Opción A: Monolito Modular con Laravel 12**.
+
+**Justificación:**
+
+1. **Cohesión transaccional:** operaciones como registrar producción (RFPROD02) requieren
+   descontar lotes por FEFO, actualizar stock de bodega y registrar auditoría en una sola
+   transacción ACID. En microservicios esto exigiría sagas distribuidas, inviables para el
+   equipo y el cronograma.
+
+2. **Velocidad de entrega:** Laravel 12 provee ORM Eloquent, sistema de colas, jobs, eventos
+   y autenticación out-of-the-box. El equipo puede cubrir los 8 módulos en tres cortes sin
+   infraestructura adicional.
+
+3. **Preparación para evolución:** la separación modular interna permite extraer un módulo a
+   microservicio en el futuro si el cliente escala, cumpliendo RNFESC-01 sin reescribir
+   desde cero.
+
+4. **Curva de aprendizaje:** el stack Laravel es conocido por el equipo, reduciendo el riesgo
+   de bloqueos técnicos en un proyecto con fecha de entrega fija.
+
+5. **La Opción B fue descartada** porque sin fronteras modulares el sistema se volvería un
+   "big ball of mud" a partir del Corte 2, dificultando las pruebas unitarias exigidas
+   (RNFMAN-02: ≥ 70% de cobertura).
+
+6. **La Opción C fue descartada** por la complejidad operativa desproporcionada para un MVP
+   con 10 usuarios concurrentes (RNFPER-04) y un equipo sin experiencia en orquestación
+   de contenedores.
+
+---
+
+## Consecuencias
+
+### Positivas
+
+- Desarrollo, prueba y despliegue en un único pipeline CI/CD (RNFMAN-04).
+- Transacciones ACID nativas entre módulos sin coordinación distribuida.
+- Tiempo de arranque del proyecto reducido; el equipo es productivo desde el Sprint 1.
+- OpenAPI/Swagger centralizado en un solo servidor (RNFMAN-03).
+- Depuración y trazabilidad de errores simplificada.
+
+### Negativas / Riesgos
+
+- **Acoplamiento de despliegue:** un fallo en el módulo de Indicadores puede afectar la
+  recepción. Mitigación: pruebas de integración entre módulos y monitoreo por ruta.
+- **Escalabilidad horizontal limitada:** escalar solo el módulo de reportes pesados
+  (RNFPER-03) no es posible sin extraerlo. Aceptado para el MVP; se documenta como
+  deuda técnica a revisar post-piloto.
+- **Riesgo de erosión modular:** si los desarrolladores hacen llamadas directas entre
+  módulos saltándose el Shared Kernel, se pierde la separación de fronteras. Mitigación:
+  revisiones de código (PR) y lint arquitectónico.
+
+---
+
+## Referencias
+
+- SRS §3 Alcance del MVP — módulos must-have
+- SRS §5.6 RNFMAN-01 — principios SOLID y separación de capas
+- SRS §5.7 RNFESC-01 — soporte multi-tenant sin rediseño mayor
+- SRS §4.8 RFAUD01 — inmutabilidad de movimientos de inventario
+- Diagrama de Arquitectura de Alto Nivel — Proyecto Nuclear I-2026

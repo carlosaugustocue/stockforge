@@ -1,0 +1,146 @@
+# ADR-002: Usar MySQL como motor de base de datos principal
+
+- **Estado:** Aceptado
+- **Fecha:** 2026-05-10
+- **Autores:** Equipo Proyecto Nuclear I-2026
+- **Proyecto:** Sistema de Gestión de Inventario y Logística — CUE
+
+---
+
+## Contexto
+
+El sistema requiere persistir y consultar datos de inventario por lote, trazabilidad completa
+de movimientos, KPIs gerenciales y exportación de reportes. Los requisitos imponen restricciones
+técnicas concretas sobre el motor de base de datos:
+
+- **Inmutabilidad y auditoría:** RFAUD01 prohíbe el borrado de registros; toda operación de
+  escritura debe quedar registrada (RFAUD03).
+- **Consistencia transaccional:** traslados entre bodegas (RFINV04) deben ser atómicos;
+  el descuento de materia prima en producción (RFPROD02) afecta múltiples lotes en una sola
+  operación.
+- **Trazabilidad por lote:** RFAUD02 exige vista completa recepción → consumo → despacho,
+  que implica JOINs complejos entre tablas de movimientos, lotes, bodegas y producción.
+- **Rendimiento de reportes:** RNFPER-03 exige generación de PDF/Excel en ≤ 10 segundos
+  para rangos de hasta un año; RNFPER-01 exige respuesta ≤ 2 segundos para consultas de
+  inventario con hasta 10.000 movimientos.
+- **Cifrado de datos sensibles:** RNFSEC-05 requiere cifrado en reposo de columnas con costos
+  y márgenes.
+- **Multi-tenant futuro:** RNFESC-01 exige que el modelo de datos contemple
+  `centro_distribucion_id` desde el MVP.
+
+---
+
+## Alternativas consideradas
+
+### Opción A — MySQL con InnoDB (elegida)
+
+RDBMS relacional open-source ampliamente adoptado. El motor InnoDB provee transacciones ACID
+completas, claves foráneas, bloqueo a nivel de fila y recuperación ante fallos. Compatibilidad
+total con el ecosistema Laravel (Eloquent ORM, migraciones, seeders). Cifrado en reposo
+disponible mediante MySQL Enterprise Transparent Data Encryption o cifrado a nivel de
+aplicación con Laravel Crypt. Amplia oferta de servicios administrados en cloud (PlanetScale,
+Railway, AWS RDS for MySQL).
+
+### Opción B — PostgreSQL
+
+RDBMS relacional open-source con soporte nativo de transacciones ACID, índices avanzados
+(B-tree, GIN, BRIN), particionado de tablas y cifrado de columnas con `pgcrypto`. Mayor
+riqueza de tipos nativos (rangos, arrays, JSON binario).
+
+### Opción C — MongoDB
+
+Base de datos documental NoSQL. Esquema flexible, escalabilidad horizontal sencilla.
+Sin soporte nativo de transacciones multi-documento tan maduro; JOINs entre colecciones
+son costosos y menos naturales para un modelo de inventario fuertemente relacional.
+
+---
+
+## Decisión
+
+Se adopta **MySQL con motor InnoDB** como único motor de base de datos del MVP.
+
+**Justificación:**
+
+1. **Modelo de datos intrínsecamente relacional:** el inventario por lote con vencimiento
+   (RFINV02), la política FEFO (RFINV03) y la trazabilidad lote→producción (RFAUD02) se
+   expresan naturalmente con tablas relacionadas, claves foráneas y JOINs. MySQL con InnoDB
+   soporta este modelo de forma completa y madura.
+
+2. **Transacciones ACID para operaciones críticas:** el traslado bodega Principal → Planta
+   (RFINV04) debe decrementar y acreditar stock en la misma transacción. InnoDB garantiza
+   esto nativamente con bloqueo a nivel de fila; fallar a la mitad activa un rollback
+   automático que preserva la consistencia del inventario.
+
+3. **Compatibilidad total con Laravel y Eloquent:** MySQL es el motor de referencia del
+   ecosistema Laravel. Las migraciones, seeders, query builder y todas las características
+   de Eloquent están probadas y documentadas prioritariamente contra MySQL, reduciendo
+   fricciones durante el desarrollo.
+
+4. **Cifrado de datos sensibles:** RNFSEC-05 se cubre cifrando las columnas de costos y
+   márgenes a nivel de aplicación mediante `Crypt` de Laravel, complementado con cifrado
+   de volumen en el servicio cloud elegido (RNFPOR-01). Esta estrategia es independiente
+   del motor y no añade complejidad de administración de extensiones.
+
+5. **Rendimiento suficiente para el MVP:** con índices compuestos sobre `(materia_prima_id,
+   fecha_vencimiento)` para FEFO y sobre `(created_at, bodega_id)` para el kardex, MySQL
+   cumple RNFPER-01 (≤ 2 s) y RNFPER-03 (≤ 10 s) para el volumen del MVP (hasta
+   10.000 movimientos, 10 usuarios concurrentes).
+
+6. **Amplia disponibilidad como servicio administrado:** proveedores accesibles desde
+   Colombia (Railway, PlanetScale, AWS RDS) ofrecen MySQL administrado con backups
+   automáticos, cubriendo RNFAVA-02 sin configuración manual de `mysqldump`.
+
+7. **La Opción B fue descartada** porque, si bien PostgreSQL ofrece tipos más avanzados
+   y `pgcrypto` nativo, estas capacidades no son necesarias para el alcance del MVP. La
+   decisión prioriza la familiaridad del equipo y la cobertura del ecosistema Laravel
+   sobre características que no se usarán en los tres cortes académicos.
+
+8. **La Opción C fue descartada** porque el esquema de inventario con relaciones
+   lote↔movimiento↔bodega↔producción es fuertemente relacional. MongoDB exigiría
+   desnormalización agresiva que haría las consultas de auditoría (RFAUD02) difíciles de
+   mantener y verificar.
+
+---
+
+## Consecuencias
+
+### Positivas
+
+- Integridad referencial garantizada por InnoDB: imposible registrar un movimiento para
+  un lote inexistente sin violar la clave foránea.
+- Soporte completo de ACID simplifica la lógica de negocio (no se necesitan sagas para
+  traslados entre bodegas).
+- El campo `centro_distribucion_id` en las tablas maestras habilita multi-tenant lógico
+  (RNFESC-01) sin cambio de motor.
+- Backup automático con el servicio administrado elegido cubre RNFAVA-02 sin scripts
+  adicionales.
+- Curva de aprendizaje mínima: el equipo puede operar MySQL desde el Sprint 1.
+
+### Negativas / Riesgos
+
+- **Cifrado a nivel de aplicación:** al no usar cifrado nativo de columnas del motor,
+  las columnas de costos/márgenes deben ser cifradas/descifradas en la capa de servicio
+  de Laravel. Esto añade lógica en el modelo Eloquent y debe documentarse para que los
+  desarrolladores no accedan a esas columnas con SQL crudo sin descifrar. Mitigación:
+  encapsular en un `Cast` de Eloquent personalizado.
+- **Escalabilidad horizontal limitada:** MySQL escala verticalmente de forma natural;
+  la escalabilidad horizontal (sharding) es más compleja que en soluciones como
+  PostgreSQL con Citus o bases NoSQL. Para el MVP con 10 usuarios concurrentes
+  (RNFPER-04) esto no es un problema. Deuda técnica documentada para revisión
+  post-piloto si el sistema crece a múltiples centros de distribución.
+- **Tipos de datos menos expresivos:** MySQL carece de tipos nativos como rangos o
+  arrays. Las consultas de inventario que en PostgreSQL se expresarían con tipos
+  avanzados deberán modelarse con columnas estándar y lógica en la aplicación.
+  Para el alcance del MVP esto es manejable.
+
+---
+
+## Referencias
+
+- SRS §4.3 RFINV02, RFINV03, RFINV04 — stock por lote, FEFO, traslados atómicos
+- SRS §4.8 RFAUD01, RFAUD02, RFAUD03 — inmutabilidad y trazabilidad
+- SRS §5.1 RNFPER-01, RNFPER-03 — tiempos de respuesta
+- SRS §5.3 RNFSEC-05 — cifrado de datos sensibles en reposo
+- SRS §5.7 RNFESC-01 — multi-tenant lógico con `centro_distribucion_id`
+- SRS §5.2 RNFAVA-02 — respaldos automáticos diarios
+- SRS §5.9 RNFPOR-01 — despliegue en proveedor cloud accesible desde Colombia

@@ -34,10 +34,11 @@ const clampColor = (hex: string) => {
  * Proveedor de Tema: Envuelve la aplicación para dar acceso al color global
  */
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  // Color por defecto (el azul que elegimos)
-  const [primaryColor, setPrimaryColor] = useState("#2563eb");
+  // Color por defecto (Vino tinto de Daluzed)
+  const [primaryColor, setPrimaryColor] = useState("#8B2323");
 
-  // 1. Al cargar la app, buscamos si el usuario ya tenía un color guardado
+  // 1. Al cargar la app, buscamos si el usuario ya tenía un color guardado (COMENTADO POR MARCA)
+  /*
   useEffect(() => {
     const savedColor = localStorage.getItem("app-primary-color");
     if (savedColor) {
@@ -46,6 +47,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       applyTheme(safeColor);
     }
   }, []);
+  */
 
   // 2. Función para aplicar el color a las variables CSS del :root
   const applyTheme = (color: string) => {
@@ -54,10 +56,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     root.style.setProperty("--primary", safeColor);
 
     // Creamos un "secundario" basado en el primario pero con transparencia
-    // Esto hace que las figuras decorativas siempre combinen
-    root.style.setProperty("--secondary", `${safeColor}cc`); // Color con 80% opacidad
+    root.style.setProperty("--secondary", `${safeColor}cc`); 
 
-    localStorage.setItem("app-primary-color", safeColor);
+    // localStorage.setItem("app-primary-color", safeColor);
   };
 
   // 3. Cada vez que el estado 'primaryColor' cambie, ejecutamos la aplicación del tema

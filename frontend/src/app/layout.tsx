@@ -20,7 +20,8 @@ export default function RootLayout({
   return (
     <html lang="es" className={cn("font-sans", inter.variable)}>
       <body className={inter.className}>
-        {/* Script para evitar el flash de color azul antes de cargar el tema del usuario */}
+        {/* Script para evitar el flash de color (COMENTADO POR MARCA DALUZED) */}
+        {/* 
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -48,6 +49,7 @@ export default function RootLayout({
             `,
           }}
         />
+        */}
         <ThemeProvider>
           {children}
         </ThemeProvider>

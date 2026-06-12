@@ -3,17 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --primary: #2563eb;
-  --secondary: #3b82f6;
-  --bg-left: #ffffff;
-  --bg-right: #f3f4f6;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
+  --primary: #8B2323;    /* Vino tinto (Texto Daluzed) */
+  --secondary: #E11D24;  /* Rojo (Cerezas) */
+  --bg-left: #FDF2F4;    /* Rosado muy pálido (Basado en frosting) */
+  --bg-right: #FFFFFF;
+  --text-main: #1A1A1A;
+  --text-muted: #666666;
 }
 
 body {
-  @apply antialiased overflow-hidden;
+  @apply antialiased;
   color: var(--text-main);
+  overflow: hidden; /* El scroll lo maneja el <main> interno del layout */
 }
 
 /* FONDO DIAGONAL LIMPIO 50/50 */

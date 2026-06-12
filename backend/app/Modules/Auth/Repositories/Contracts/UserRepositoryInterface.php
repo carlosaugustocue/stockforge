@@ -23,6 +23,17 @@ use App\Models\User;
 interface UserRepositoryInterface
 {
     /**
+     * Retorna todos los usuarios con su relación de rol cargada.
+     */
+    public function all(): \Illuminate\Database\Eloquent\Collection;
+
+    /**
+     * Busca un usuario por su ID.
+     * Retorna null si no existe.
+     */
+    public function findById(int $id): ?User;
+
+    /**
      * Busca un usuario por su dirección de correo electrónico.
      * Retorna null si no existe (evita lanzar excepciones innecesarias).
      */

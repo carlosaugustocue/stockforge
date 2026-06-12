@@ -1,0 +1,153 @@
+# ADR-004: Usar colas asíncronas (Laravel Queue) para el despacho de notificaciones externas
+
+- **Estado:** Aceptado
+- **Fecha:** 2026-05-10
+- **Autores:** Equipo Proyecto Nuclear I-2026
+- **Proyecto:** Sistema de Gestión de Inventario y Logística — CUE
+
+---
+
+## Contexto
+
+El sistema debe enviar notificaciones operativas a través de dos canales externos:
+**WhatsApp Business API** (canal preferido del Encargado de Inventarios) y **SMTP**
+(correo electrónico para Gerencia y Jefe de Producción). Estas notificaciones se disparan
+ante eventos de negocio específicos: stock bajo (RFALR01), vencimiento próximo (RFALR02)
+y cualquier condición configurable (RFALR05).
+
+Las restricciones que condicionan el diseño de este subsistema son:
+
+- **Latencia de APIs externas:** WhatsApp Business API y los servidores SMTP tienen
+  tiempos de respuesta variables (cientos de milisegundos a segundos) y pueden fallar
+  o aplicar rate limiting sin previo aviso.
+- **No bloquear operaciones críticas:** registrar una recepción (RFREC03) o un traslado
+  (RFINV04) no puede quedar bloqueado esperando que el servidor de correo responda.
+  El tiempo de respuesta general del sistema es ≤ 2 segundos (RNFPER-01).
+- **Deduplicación obligatoria:** RFALR06 prohíbe reenviar la misma alerta mientras la
+  condición no se haya resuelto y vuelto a dispararse (ventana configurable).
+- **Reintentos ante fallos:** si WhatsApp API está caído momentáneamente, la notificación
+  debe entregarse en cuanto el servicio se recupere, sin perderla.
+- **Configuración sin redespliegue:** RFALR05 exige que destinatarios y canales sean
+  modificables en caliente por el usuario.
+- **Restricción de costos:** el equipo es académico; la solución debe funcionar con
+  infraestructura de bajo costo o gratuita en el MVP (S02: pasarela WhatsApp de bajo
+  costo como Twilio sandbox o Meta directo).
+
+---
+
+## Alternativas consideradas
+
+### Opción A — Colas asíncronas con Laravel Queue + driver de base de datos (elegida)
+
+Laravel Queue permite encolar `Jobs` que el backend ejecuta en segundo plano mediante
+workers independientes. El driver `database` usa PostgreSQL como almacén de la cola
+(misma base de datos del sistema), eliminando la necesidad de un broker externo.
+Los Jobs implementan reintentos automáticos con backoff exponencial.
+
+### Opción B — Llamada síncrona directa a APIs externas
+
+Enviar la notificación directamente dentro del ciclo de la petición HTTP que disparó
+la alerta. Simple de implementar, sin componentes adicionales.
+
+### Opción C — Cola con broker externo (Redis + Laravel Horizon)
+
+Redis como broker de mensajes en memoria, Laravel Horizon para monitoreo visual de
+workers y colas. Mayor rendimiento y capacidad de introspección que el driver de base
+de datos.
+
+### Opción D — Servicio de notificaciones separado (microservicio)
+
+Un proceso independiente que consume eventos del backend y gestiona el despacho a
+canales externos.
+
+---
+
+## Decisión
+
+Se adopta la **Opción A: Laravel Queue con driver `database` sobre PostgreSQL**, usando
+`Jobs` para WhatsApp y SMTP, con deduplicación mediante tabla de control de alertas
+enviadas.
+
+**Justificación:**
+
+1. **Desacoplamiento de latencias externas:** el ciclo HTTP de registro de inventario
+   encola el `Job` y responde en milisegundos. El worker procesa la notificación en
+   segundo plano, preservando RNFPER-01 (≤ 2 segundos) aunque la API de WhatsApp tarde
+   varios segundos en responder.
+
+2. **Reintentos automáticos:** Laravel Queue reintenta automáticamente Jobs fallidos con
+   backoff configurable. Si el servidor SMTP está temporalmente caído, la notificación
+   se reintenta sin intervención manual, cumpliendo el espíritu de RFALR03 y RFALR04.
+
+3. **Deduplicación mediante tabla de control:** antes de encolar un Job de alerta, el
+   sistema consulta si ya existe una alerta activa del mismo tipo para el mismo ítem
+   dentro de la ventana configurable (RFALR06). Esta lógica vive en el `mod:Alertas`
+   y usa una transacción PostgreSQL para evitar condiciones de carrera.
+
+4. **Sin infraestructura adicional para el MVP:** el driver `database` usa la misma
+   instancia de PostgreSQL ya existente. No requiere instalar ni operar Redis,
+   simplificando el despliegue Docker (RNFPOR-02) y reduciendo costos del MVP académico.
+
+5. **Configuración en caliente:** los destinatarios y canales por tipo de alerta se
+   almacenan en tabla de configuración (RFALR05). El Job lee la configuración vigente
+   al momento de ejecutarse, no al momento de encolarse.
+
+6. **La Opción B fue descartada** porque una llamada síncrona a WhatsApp API dentro
+   del ciclo HTTP violaría RNFPER-01 y generaría timeouts para el usuario si la API
+   externa falla. Además, sin reintentos, una falla transitoria pierde la notificación
+   permanentemente.
+
+7. **La Opción C fue descartada** porque Redis añade un componente de infraestructura
+   adicional que debe ser instalado, configurado y monitoreado. Para el volumen del MVP
+   (alertas puntuales, no mensajes en streaming) el driver `database` es suficiente.
+   Se documenta Redis como mejora natural si el volumen de alertas crece
+   significativamente post-piloto.
+
+8. **La Opción D fue descartada** por la misma razón que los microservicios en ADR-001:
+   complejidad operativa desproporcionada para el equipo y el cronograma.
+
+---
+
+## Consecuencias
+
+### Positivas
+
+- Las operaciones de inventario nunca bloquean por latencia de canales externos.
+- Las notificaciones sobreviven fallos transitorios de WhatsApp API o SMTP gracias a
+  los reintentos automáticos.
+- La deduplicación (RFALR06) previene spam operativo sin lógica compleja.
+- Un solo `docker-compose` con el worker corriendo como proceso separado cubre el
+  despliegue completo (RNFPOR-02).
+- Los Jobs fallidos se almacenan en la tabla `failed_jobs` de PostgreSQL, permitiendo
+  diagnóstico y reintento manual por el Administrador.
+
+### Negativas / Riesgos
+
+- **Latencia de entrega no es en tiempo real estricto:** existe un retardo entre el
+  evento de negocio y la entrega de la notificación (segundos a minutos según la carga
+  del worker). Para alertas de stock bajo esto es aceptable; para emergencias críticas
+  se podría añadir una notificación en el dashboard con actualización en tiempo real
+  (RFIND07) como canal inmediato complementario.
+- **Worker como punto de fallo:** si el proceso worker se detiene, las notificaciones
+  se acumulan en la tabla `jobs` pero no se entregan. Mitigación: configurar reinicio
+  automático del worker con `supervisor` en el contenedor Docker.
+- **Escalabilidad de la cola en base de datos:** con alto volumen de alertas (escenario
+  multi-tenant futuro), la tabla `jobs` puede convertirse en un cuello de botella.
+  Deuda técnica documentada: migrar al driver Redis si el sistema supera 5 centros de
+  distribución activos.
+- **Integración con WhatsApp Business API pendiente de confirmar:** S02 señala que la
+  pasarela exacta (Twilio, MessageBird, Meta directo) se define en Sprint 1. El `Job`
+  debe abstraerse detrás de una interfaz `NotificationChannel` para poder cambiar el
+  proveedor sin modificar la lógica de encolamiento.
+
+---
+
+## Referencias
+
+- SRS §4.6 RFALR01–RFALR06 — módulo de alertas y notificaciones
+- SRS §5.1 RNFPER-01 — tiempo de respuesta ≤ 2 segundos
+- SRS §5.8 RNFINT-01, RNFINT-02 — integración WhatsApp Business API y SMTP
+- SRS §5.9 RNFPOR-02 — contenedorización Docker
+- SRS §7 S02 — pasarela WhatsApp a confirmar en Sprint 1
+- Diagrama de Arquitectura de Alto Nivel — flechas punteadas: Queue · API Asíncrona
+  (WhatsApp) y Queue · SMTP Asíncrono (correo)
