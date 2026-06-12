@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, Plus, Play, Truck, X, AlertTriangle, ClipboardList } from 'lucide-react';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
 import { catalogoService, type ProductoTerminado } from '@/services/catalogo.service';
+import { formatNum } from '@/lib/utils';
 
 const ESTADO_BADGE: Record<string, string> = {
   pendiente:  'bg-yellow-100 text-yellow-700',
@@ -171,8 +172,8 @@ export default function ProduccionPage() {
                   <tr key={o.id} className="border-b border-black/5 hover:bg-black/2 transition-colors">
                     <td className="px-4 py-3 font-black" style={{ color: 'var(--text-muted)' }}>#{o.id}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{o.producto_terminado?.nombre}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-main)' }}>{o.cantidad_planificada}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-main)' }}>{o.cantidad_producida ?? '—'}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-main)' }}>{formatNum(o.cantidad_planificada)}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-main)' }}>{o.cantidad_producida != null ? formatNum(o.cantidad_producida) : '—'}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{o.fecha_planificada}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ESTADO_BADGE[o.estado] ?? ''}`}>
@@ -239,7 +240,7 @@ export default function ProduccionPage() {
       {modal === 'requerimientos' && ordenCreada && (
         <ModalShell title={`Ingredientes — Orden #${ordenCreada.id}`} onClose={() => setModal(null)}>
           <div className="mb-4 p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700 font-medium">
-            Orden creada. Para producir <strong>{ordenCreada.cantidad_planificada}</strong> unidades de{' '}
+            Orden creada. Para producir <strong>{formatNum(ordenCreada.cantidad_planificada)}</strong> unidades de{' '}
             <strong>{ordenCreada.producto_terminado?.nombre}</strong> el sistema necesita:
           </div>
 
@@ -257,7 +258,7 @@ export default function ProduccionPage() {
                   <tr key={r.materia_prima_id} className="border-b border-black/5">
                     <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-main)' }}>{r.materia_prima}</td>
                     <td className="px-4 py-2.5 font-black" style={{ color: 'var(--primary)' }}>
-                      {r.cantidad_requerida.toLocaleString('es-CO')}
+                      {formatNum(r.cantidad_requerida)}
                     </td>
                   </tr>
                 ))}
@@ -323,7 +324,7 @@ export default function ProduccionPage() {
         <ModalShell title={`Ejecutar Producción — Orden #${selected.id}`} onClose={() => setModal(null)}>
           <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
             Producto: <strong style={{ color: 'var(--text-main)' }}>{selected.producto_terminado?.nombre}</strong>
-            {' '}· Planificado: <strong style={{ color: 'var(--text-main)' }}>{selected.cantidad_planificada}</strong>
+            {' '}· Planificado: <strong style={{ color: 'var(--text-main)' }}>{formatNum(selected.cantidad_planificada)}</strong>
           </p>
           {msgErr && <ErrBox msg={msgErr} />}
           <form onSubmit={handleEjecutar} className="space-y-4">

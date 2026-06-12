@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Plus, Pencil, Trash2, X, CheckCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { catalogoService, type ProductoTerminado, type MateriaPrima, type RelacionMpPt } from '@/services/catalogo.service';
+import { formatNum } from '@/lib/utils';
 
 type Modal = 'crear' | 'editar' | 'relaciones' | null;
 
@@ -267,7 +268,7 @@ export default function ProductosTerminadosPage() {
                   <tr key={r.materia_prima_id} className="border-b border-black/5">
                     <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-main)' }}>{r.materia_prima_nombre}</td>
                     <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)' }}>{r.unidad_medida?.nombre ?? '—'}</td>
-                    <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-main)' }}>{r.cantidad_requerida}</td>
+                    <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-main)' }}>{formatNum(r.cantidad_requerida)}</td>
                     <td className="px-4 py-2.5">
                       <button onClick={() => handleDesasociar(r.materia_prima_id)}
                         className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">

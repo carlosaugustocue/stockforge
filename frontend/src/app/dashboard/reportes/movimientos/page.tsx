@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Filter } from 'lucide-react';
 import { reportesService } from '@/services/reportes.service';
+import { formatNum } from '@/lib/utils';
 
 interface Movimiento {
   id: number;
@@ -120,7 +121,7 @@ export default function MovimientosPage() {
                     </td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{m.bodega}</td>
                     <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>
-                      {m.cantidad.toLocaleString('es-CO')}
+                      {formatNum(m.cantidad)}
                       {m.compensatorio && <span className="ml-1 text-[9px] text-purple-600 font-black">(COMP)</span>}
                     </td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{m.usuario}</td>
