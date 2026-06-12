@@ -106,6 +106,16 @@ export default function RecepcionesPage() {
     finally { setEnviando(false); }
   };
 
+  const cerrarOrden = async (id: number) => {
+    try {
+      await recepcionesService.actualizarOrden(id, { estado: 'cerrada' });
+      setMsgOk(`Orden #${id} cerrada correctamente.`);
+      cargar();
+    } catch (err: unknown) {
+      setMsgErr((err as Error).message ?? 'Error al cerrar la orden');
+    }
+  };
+
   const addItem = () => setItems(prev => [...prev, { materia_prima_id: '', cantidad: '', fecha_vencimiento: '' }]);
   const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: keyof ItemRecepcion, val: string) =>
@@ -166,13 +176,22 @@ export default function RecepcionesPage() {
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{o.fecha_esperada ?? '—'}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{o.observaciones ?? '—'}</td>
                     <td className="px-5 py-3">
-                      {(o.estado === 'pendiente' || o.estado === 'en_recepcion') && (
-                        <button onClick={() => abrirRecibir(o)}
-                          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase text-white transition hover:opacity-80"
-                          style={{ background: '#16a34a' }}>
-                          <PackageCheck size={10} /> Registrar recepción
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {(o.estado === 'pendiente' || o.estado === 'en_recepcion') && (
+                          <button onClick={() => abrirRecibir(o)}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase text-white transition hover:opacity-80"
+                            style={{ background: '#16a34a' }}>
+                            <PackageCheck size={10} /> Registrar recepción
+                          </button>
+                        )}
+                        {o.estado === 'en_recepcion' && (
+                          <button onClick={() => cerrarOrden(o.id)}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase text-white transition hover:opacity-80"
+                            style={{ background: '#2563eb' }}>
+                            Cerrar orden
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -10,7 +10,7 @@ interface BitacoraEntry {
   ip_address: string;
   user_agent: string | null;
   created_at: string;
-  usuario: string | null;
+  usuario: { id: number; name: string; email: string } | null;
 }
 
 const ACCION_BADGE: Record<string, string> = {
@@ -32,7 +32,10 @@ export default function BitacoraPage() {
     const params: Record<string, string> = {};
     if (accion) params.accion = accion;
     adminService.bitacora(params)
-      .then(d => setEntradas(d as BitacoraEntry[]))
+      .then(d => {
+        const res = d as { data?: BitacoraEntry[] };
+        setEntradas(res.data ?? []);
+      })
       .catch(e => setError(e.message ?? 'Error'))
       .finally(() => setLoading(false));
   };
@@ -100,7 +103,7 @@ export default function BitacoraPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-main)' }}>
-                      {e.usuario ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      {e.usuario ? e.usuario.name : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td className="px-5 py-3 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{e.ip_address}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
