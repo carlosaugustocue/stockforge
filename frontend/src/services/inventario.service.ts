@@ -21,7 +21,8 @@ export interface AlertaMp extends StockMp {
 }
 
 export interface TrasladoBody {
-  lote_id: number;
+  materia_prima_id: number;
+  bodega_origen_id: number;
   bodega_destino_id: number;
   cantidad: number;
 }

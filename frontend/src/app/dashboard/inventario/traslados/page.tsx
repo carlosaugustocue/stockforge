@@ -82,7 +82,8 @@ export default function TrasladosPage() {
     setResultado(null);
     try {
       await inventarioService.trasladar({
-        lote_id:           parseInt(loteId),
+        materia_prima_id:  parseInt(mpId),
+        bodega_origen_id:  parseInt(loteId),
         bodega_destino_id: parseInt(bodegaId),
         cantidad:          cantNum,
       });

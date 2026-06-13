@@ -71,16 +71,17 @@ class InventarioService
      *
      * @throws \RuntimeException si stock insuficiente o bodega destino igual a origen
      */
-    public function trasladar(int $loteId, int $bodegaDestinoId, float $cantidad, int $userId): array
+    public function trasladar(int $mpId, int $bodegaOrigenId, int $bodegaDestinoId, float $cantidad, int $userId): array
     {
-        $lote = $this->repo->lotePorId($loteId);
-
-        if (! $lote) {
-            throw new \RuntimeException('Lote no encontrado.');
+        if ($bodegaOrigenId === $bodegaDestinoId) {
+            throw new \RuntimeException('La bodega destino debe ser diferente a la bodega de origen.');
         }
 
-        if ($lote->bodega_id === $bodegaDestinoId) {
-            throw new \RuntimeException('La bodega destino debe ser diferente a la bodega de origen.');
+        // Seleccionar el lote más próximo a vencer en la bodega origen (FEFO — RFINV03)
+        $lote = $this->repo->loteFefoEnBodega($mpId, $bodegaOrigenId);
+
+        if (! $lote) {
+            throw new \RuntimeException('No hay stock disponible de esa materia prima en la bodega de origen.');
         }
 
         if (! $lote->tieneStockSuficiente($cantidad)) {

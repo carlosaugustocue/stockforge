@@ -61,4 +61,15 @@ class InventarioRepository implements InventarioRepositoryInterface
     {
         return LoteMateriaPrima::with(['bodega', 'materiaPrima'])->find($id);
     }
+
+    public function loteFefoEnBodega(int $mpId, int $bodegaId): ?LoteMateriaPrima
+    {
+        return LoteMateriaPrima::with(['bodega', 'materiaPrima'])
+            ->where('materia_prima_id', $mpId)
+            ->where('bodega_id', $bodegaId)
+            ->where('cantidad_actual', '>', 0)
+            ->orderByRaw('fecha_vencimiento IS NULL, fecha_vencimiento ASC')
+            ->orderBy('fecha_ingreso')
+            ->first();
+    }
 }

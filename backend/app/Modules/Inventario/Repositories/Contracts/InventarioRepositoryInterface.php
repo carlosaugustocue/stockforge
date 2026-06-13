@@ -23,4 +23,7 @@ interface InventarioRepositoryInterface
 
     /** Lote de MP por ID con bodega cargada. */
     public function lotePorId(int $id): ?LoteMateriaPrima;
+
+    /** Lote más próximo a vencer (FEFO) de una MP en una bodega específica. */
+    public function loteFefoEnBodega(int $mpId, int $bodegaId): ?LoteMateriaPrima;
 }
