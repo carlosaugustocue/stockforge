@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Scale, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Scale, AlertTriangle, RefreshCw, Search } from 'lucide-react';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
 import { formatNum } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ export default function StockMpPage() {
   const [stock,   setStock]   = useState<StockMp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [search,  setSearch]  = useState('');
 
   const cargar = () => {
     setLoading(true);
@@ -54,8 +55,22 @@ export default function StockMpPage() {
       )}
 
       {!loading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {stock.map(mp => (
+        <>
+          {/* Buscador */}
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Buscar materia prima…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-lg border-2 border-black/10 text-sm focus:outline-none focus:border-[var(--primary)]"
+              style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {stock.filter(mp => mp.nombre.toLowerCase().includes(search.toLowerCase())).map(mp => (
             <div key={mp.materia_prima_id}
               className={`rounded-xl p-5 border-2 shadow-sm transition-all hover:shadow-md ${
                 mp.bajo_reorden ? 'border-red-200 bg-red-50' : 'border-black/5'
@@ -130,6 +145,7 @@ export default function StockMpPage() {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );
