@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import {
   RefreshCw, Plus, Play, Truck, X, AlertTriangle,
   ClipboardList, ChefHat, CheckCircle2, Package, Search,
 } from 'lucide-react';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
 import { catalogoService, type ProductoTerminado, type RelacionMpPt } from '@/services/catalogo.service';
-import { formatNum, formatCantidad, parseApiError, unidadAdmiteDecimales } from '@/lib/utils';
+import { formatCantidad, parseApiError, unidadAdmiteDecimales } from '@/lib/utils';
 
 /* ─────────────── Tipos ─────────────── */
 

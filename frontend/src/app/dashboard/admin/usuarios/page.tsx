@@ -170,7 +170,7 @@ export default function UsuariosPage() {
                   <input
                     type={f.type}
                     placeholder={f.placeholder}
-                    value={(form as Record<string, string | number>)[f.id] as string}
+                    value={(form as unknown as Record<string, string | number>)[f.id] as string}
                     onChange={set(f.id as keyof CrearUsuarioBody)}
                     className="w-full px-3 py-2.5 rounded-lg border-2 border-black/10 text-sm focus:outline-none focus:border-[var(--primary)] transition-colors"
                     style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }}

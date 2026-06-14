@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Plus, Pencil, Trash2, X, CheckCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, Plus, Pencil, Trash2, X, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 import { catalogoService, type ProductoTerminado, type MateriaPrima, type RelacionMpPt } from '@/services/catalogo.service';
 import { formatNum } from '@/lib/utils';
 

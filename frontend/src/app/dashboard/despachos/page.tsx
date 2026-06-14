@@ -49,7 +49,7 @@ export default function DespachosPage() {
       despachosService.listar(),
       reportesService.stockPt(),
     ]).then(([d, s]) => {
-      if (d.status === 'fulfilled') setDespachos(d.value as DespachoRaw[]);
+      if (d.status === 'fulfilled') setDespachos(d.value as unknown as DespachoRaw[]);
       if (s.status === 'fulfilled') {
         const stock = s.value as StockPtResponse;
         setLotesPt(stock.detalle ?? []);

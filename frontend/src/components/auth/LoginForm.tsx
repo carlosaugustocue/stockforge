@@ -28,8 +28,8 @@ export default function LoginForm() {
       const usuario = await fetchMe(data.token);
       guardarSesion(data.token, usuario);
       router.push(rutaPorRol(data.rol));
-    } catch (err: any) {
-      setError(err.message || "Error al conectar con el servidor.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : null) || "Error al conectar con el servidor.");
     } finally {
       setLoading(false);
     }

@@ -24,7 +24,7 @@ export function obtenerSesion(): { token: string; usuario: Usuario } | null {
   if (!token || !usuario) return null;
   try {
     return { token, usuario: JSON.parse(usuario) };
-  } catch (e) {
+  } catch {
     return null;
   }
 }

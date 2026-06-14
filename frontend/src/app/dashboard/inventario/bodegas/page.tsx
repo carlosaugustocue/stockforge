@@ -138,7 +138,7 @@ export default function BodegasStockPage() {
     s + b.items.filter(i => { const d = diasHasta(i.proximo_vencimiento); return d !== null && d >= 0 && d <= 30; }).length, 0);
 
   const toggleCollapse = (id: number) =>
-    setCollapsed(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setCollapsed(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
 
   /* ─── render ──────────────────────────────────────────────────────── */
   return (
