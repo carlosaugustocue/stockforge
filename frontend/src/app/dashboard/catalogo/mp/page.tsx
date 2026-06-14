@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Plus, Pencil, Trash2, X, Search, Package } from 'lucide-react';
+import { RefreshCw, Plus, Pencil, Trash2, X, Search, Package, Building2 } from 'lucide-react';
 import { catalogoService, type MateriaPrima } from '@/services/catalogo.service';
 import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { formatCantidad, unidadAdmiteDecimales } from '@/lib/utils';
 
-type Modal = 'crear' | 'editar' | null;
+type Modal = 'crear' | 'editar' | 'proveedores' | null;
 
 export default function MateriasPrimasPage() {
   const [items,        setItems]       = useState<MateriaPrima[]>([]);
@@ -23,6 +23,9 @@ export default function MateriasPrimasPage() {
   const [nombre,       setNombre]   = useState('');
   const [unidadId,     setUnidadId] = useState('');
   const [puntoReorden, setPunto]    = useState('');
+
+  // Modal proveedores
+  const [provSeleccionados, setProvSeleccionados] = useState<Set<number>>(new Set());
 
   const cargar = () => {
     setLoading(true);
@@ -104,6 +107,39 @@ export default function MateriasPrimasPage() {
       setMsgOk(`"${mp.nombre}" eliminada.`);
       cargar();
     } catch (err: unknown) { setMsgErr((err as Error).message ?? 'Error'); }
+  };
+
+  const abrirProveedores = (mp: MateriaPrima) => {
+    setSelected(mp);
+    setMsgErr('');
+    // Pre-seleccionar los proveedores que ya tienen esta MP
+    const actuales = new Set(
+      proveedores.filter(p => p.materias_primas.some(m => m.id === mp.id)).map(p => p.id)
+    );
+    setProvSeleccionados(actuales);
+    setModal('proveedores');
+  };
+
+  const handleGuardarProveedores = async () => {
+    if (!selected) return;
+    setEnviando(true); setMsgErr('');
+    try {
+      // Para cada proveedor que cambió, actualizar su lista de MPs
+      const cambios = proveedores.filter(prov => {
+        const estaActual  = prov.materias_primas.some(m => m.id === selected.id);
+        const debeEstar   = provSeleccionados.has(prov.id);
+        return estaActual !== debeEstar;
+      });
+      await Promise.all(cambios.map(prov => {
+        const mpIds = prov.materias_primas.map(m => m.id).filter(id => id !== selected.id);
+        if (provSeleccionados.has(prov.id)) mpIds.push(selected.id);
+        return proveedoresService.actualizar(prov.id, { materias_primas: mpIds });
+      }));
+      setMsgOk(`Proveedores de "${selected.nombre}" actualizados.`);
+      setModal(null);
+      cargar();
+    } catch (err: unknown) { setMsgErr((err as Error).message ?? 'Error'); }
+    finally { setEnviando(false); }
   };
 
   const filtradas = items.filter(mp =>
@@ -281,6 +317,11 @@ export default function MateriasPrimasPage() {
                   {/* Acciones */}
                   <td className="px-5 py-3.5">
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => abrirProveedores(mp)}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-slate-400 hover:text-blue-600"
+                        title="Gestionar proveedores">
+                        <Building2 size={13} />
+                      </button>
                       <button onClick={() => abrirEditar(mp)}
                         className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
                         title="Editar">
@@ -311,8 +352,83 @@ export default function MateriasPrimasPage() {
         )}
       </div>
 
+      {/* ── Modal proveedores ── */}
+      {modal === 'proveedores' && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
+
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Proveedores</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{selected.nombre}</p>
+              </div>
+              <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <X size={15} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-3">
+              {msgErr && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                  <p className="text-xs text-red-600">{msgErr}</p>
+                </div>
+              )}
+
+              {proveedores.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">
+                  No hay proveedores registrados.{' '}
+                  <a href="/dashboard/proveedores" className="underline text-blue-600">Crear proveedor</a>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {proveedores.map(prov => {
+                    const checked = provSeleccionados.has(prov.id);
+                    return (
+                      <label key={prov.id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
+                          checked ? 'border-blue-200 bg-blue-50/40' : 'border-slate-100 hover:bg-slate-50'
+                        }`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => {
+                            const next = new Set(provSeleccionados);
+                            e.target.checked ? next.add(prov.id) : next.delete(prov.id);
+                            setProvSeleccionados(next);
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{prov.nombre}</p>
+                          {prov.contacto_nombre && (
+                            <p className="text-[11px] text-slate-400 truncate">{prov.contacto_nombre}</p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setModal(null)}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={handleGuardarProveedores} disabled={enviando}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
+                  style={{ background: 'var(--primary)' }}>
+                  {enviando ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Modal crear / editar ── */}
-      {modal && (
+      {modal && modal !== 'proveedores' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 overflow-hidden">
 
