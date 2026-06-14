@@ -24,7 +24,8 @@ backend/storage/logs/
 backend/storage/framework/cache/data/*
 backend/storage/framework/sessions/*
 backend/storage/framework/views/*
-backend/bootstrap/cache/
+backend/bootstrap/cache/*
+!backend/bootstrap/cache/.gitignore
 backend/storage/app/
 backend/storage/*.key
 backend/public/storage
