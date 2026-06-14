@@ -2,20 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TrendingUp, BarChart2, AlertTriangle, Flame, Scale, ChefHat, Truck, Package } from 'lucide-react';
+import {
+  TrendingUp, BarChart2, AlertTriangle, Flame,
+  Scale, ChefHat, Truck, Package, ChevronRight,
+} from 'lucide-react';
 import { obtenerSesion } from '@/lib/session';
 import { reportesService, type Kpis } from '@/services/reportes.service';
 
-const modulos = [
-  { nombre: 'Stock de Inventario',   desc: 'Niveles de MP y alertas de reorden',         Icono: Scale,    href: '/dashboard/inventario'  },
-  { nombre: 'Reportes de Producción',desc: 'Órdenes y eficiencia productiva',             Icono: ChefHat,  href: '/dashboard/reportes'    },
-  { nombre: 'Despachos',             desc: 'Salidas de PT hacia clientes',                Icono: Truck,    href: '/dashboard/despachos'   },
-  { nombre: 'Catálogo',              desc: 'Materias primas y productos terminados',      Icono: Package,  href: '/dashboard/catalogo/mp' },
+const MODULOS = [
+  { nombre: 'Stock de Inventario',    desc: 'Niveles de MP y alertas de reorden',     Icono: Scale,    href: '/dashboard/inventario'  },
+  { nombre: 'Reportes de Producción', desc: 'Órdenes, eficiencia y KPIs productivos', Icono: ChefHat,  href: '/dashboard/reportes'    },
+  { nombre: 'Despachos',              desc: 'Salidas de productos terminados',         Icono: Truck,    href: '/dashboard/despachos'   },
+  { nombre: 'Catálogo',               desc: 'Materias primas y productos terminados',  Icono: Package,  href: '/dashboard/catalogo/mp' },
 ];
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function getDateStr() {
+  return new Date().toLocaleDateString('es-CO', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
+}
+
 export default function GerenciaView() {
-  const sesion = obtenerSesion();
-  const [kpis, setKpis]       = useState<Kpis | null>(null);
+  const sesion    = obtenerSesion();
+  const firstName = sesion?.usuario.nombre?.split(' ')[0] ?? '';
+
+  const [kpis,    setKpis]    = useState<Kpis | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,122 +43,110 @@ export default function GerenciaView() {
       .finally(() => setLoading(false));
   }, []);
 
+  const hayAlertas = (kpis?.alertas_reorden ?? 0) > 0;
+
   const tarjetas = [
     {
       titulo: 'Órdenes completadas',
-      valor:  loading ? '…' : (kpis?.ordenes_produccion.completadas ?? '—').toString(),
+      valor:  loading ? '—' : (kpis?.ordenes_produccion.completadas ?? 0).toString(),
       Icono:  Flame,
       color:  'text-green-600',
+      bg:     'bg-green-50',
     },
     {
       titulo: 'Órdenes pendientes',
-      valor:  loading ? '…' : (kpis?.ordenes_produccion.pendientes ?? '—').toString(),
+      valor:  loading ? '—' : (kpis?.ordenes_produccion.pendientes ?? 0).toString(),
       Icono:  TrendingUp,
       color:  'text-blue-600',
+      bg:     'bg-blue-50',
     },
     {
       titulo: 'Total órdenes',
-      valor:  loading ? '…' : (kpis?.ordenes_produccion.total ?? '—').toString(),
+      valor:  loading ? '—' : (kpis?.ordenes_produccion.total ?? 0).toString(),
       Icono:  BarChart2,
       color:  'text-purple-600',
+      bg:     'bg-purple-50',
     },
     {
       titulo: 'Alertas de reorden',
-      valor:  loading ? '…' : (kpis?.alertas_reorden ?? '—').toString(),
+      valor:  loading ? '—' : (kpis?.alertas_reorden ?? 0).toString(),
       Icono:  AlertTriangle,
-      color:  kpis && kpis.alertas_reorden > 0 ? 'text-red-600' : 'text-slate-400',
+      color:  hayAlertas ? 'text-red-500' : 'text-slate-400',
+      bg:     hayAlertas ? 'bg-red-50'    : 'bg-slate-50',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="space-y-5 max-w-5xl">
 
-      {/* COLUMNA IZQUIERDA */}
-      <div className="lg:col-span-8 space-y-8">
-
-        {/* Banner */}
-        <div className="rounded-xl p-8 text-white shadow-xl relative overflow-hidden border-b-4 border-r-4 border-black/10"
-          style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)' }}>
-          <div className="absolute top-0 right-0 w-64 h-64 border-8 border-white/5 rounded-full -mr-20 -mt-20" />
-          <div className="relative flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center shadow-2xl flex-shrink-0"
-              style={{ background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)' }}>
-              <TrendingUp size={36} className="text-white" />
-            </div>
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl font-black tracking-tighter uppercase italic">Panel de Gerencia</h1>
-              <p className="text-base mt-1 text-white/80 font-medium">
-                ESTRATEGIA IPN-DEV <span className="mx-2 opacity-30">|</span>
-                <span className="text-white">{sesion?.usuario.nombre}</span>
+      {/* Banner */}
+      <div className="rounded-2xl p-6 flex items-center justify-between" style={{ background: 'var(--primary)' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+            <TrendingUp size={22} className="text-white" />
+          </div>
+          <div>
+            <p className="text-white/70 text-sm">
+              {getGreeting()},{' '}
+              <span className="text-white font-semibold">{firstName}</span>
+            </p>
+            <h1 className="text-xl font-bold text-white leading-tight">Panel de Gerencia</h1>
+            {kpis && (
+              <p className="text-white/50 text-xs mt-0.5">
+                Período: {kpis.periodo.desde} – {kpis.periodo.hasta}
               </p>
-              {kpis && (
-                <p className="text-xs mt-2 text-white/60">
-                  Período: {kpis.periodo.desde} → {kpis.periodo.hasta}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
-
-        {/* Módulos navegables */}
-        <div className="rounded-xl shadow-lg p-6 border-2 border-black/5" style={{ background: 'var(--bg-left)' }}>
-          <div className="flex items-center gap-3 mb-6 border-b-2 border-black/5 pb-4">
-            <div className="w-3 h-3 rotate-45" style={{ background: 'var(--primary)' }} />
-            <h2 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
-              Módulos Disponibles
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {modulos.map(({ nombre, desc, Icono, href }) => (
-              <Link key={nombre} href={href}
-                className="group rounded-xl p-5 flex items-center gap-4 border-2 border-black/5 transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
-                style={{ background: 'var(--bg-right)' }}>
-                <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 transition-all group-hover:rotate-6"
-                  style={{ background: 'var(--primary)' }}>
-                  <Icono size={22} color="white" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-black text-sm uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
-                    {nombre}
-                  </div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{desc}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
+        <div className="hidden sm:flex flex-col items-end gap-1.5">
+          <span className="text-xs text-white/60 capitalize">{getDateStr()}</span>
+          <span className="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-medium text-white border border-white/10">
+            Gerencia
+          </span>
         </div>
       </div>
 
-      {/* COLUMNA DERECHA — KPIs */}
-      <div className="lg:col-span-4 space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 px-1">Indicadores del mes</h3>
-
-        {tarjetas.map(({ titulo, valor, Icono, color }) => (
-          <div key={titulo}
-            className="rounded-xl shadow-md p-5 flex items-center gap-4 border-2 border-black/5 transition-all hover:translate-x-1"
-            style={{ background: 'var(--bg-left)' }}>
-            <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 border-2 border-white/50"
-              style={{ background: 'var(--bg-right)' }}>
-              <Icono size={20} className={color} />
+      {/* KPIs */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {tarjetas.map(({ titulo, valor, Icono, color, bg }) => (
+          <div key={titulo} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${bg}`}>
+              <Icono size={16} className={color} />
             </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                {titulo}
-              </div>
-              <div className="text-2xl font-black tracking-tighter mt-0.5" style={{ color: 'var(--text-main)' }}>
-                {valor}
-              </div>
-            </div>
+            <div className="text-2xl font-bold text-slate-800 tabular-nums">{valor}</div>
+            <div className="text-xs font-medium text-slate-400 mt-1">{titulo}</div>
           </div>
         ))}
-
-        <Link href="/dashboard/reportes"
-          className="mt-2 block w-full py-3 rounded-lg text-xs font-black uppercase tracking-widest text-white text-center transition-all hover:opacity-90 active:scale-95"
-          style={{ background: 'var(--primary)' }}>
-          Ver reportes completos
-        </Link>
       </div>
+
+      {/* Módulos */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Módulos disponibles</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {MODULOS.map(({ nombre, desc, Icono, href }) => (
+            <Link key={nombre} href={href}
+              className="group flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all duration-150">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(139,35,35,0.08)' }}>
+                <Icono size={17} style={{ color: 'var(--primary)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-slate-700 truncate">{nombre}</div>
+                <div className="text-xs text-slate-400 truncate">{desc}</div>
+              </div>
+              <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0 transition-colors" />
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <Link href="/dashboard/reportes"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors hover:opacity-90 active:scale-95"
+        style={{ background: 'var(--primary)' }}>
+        <BarChart2 size={15} />
+        Ver reportes completos
+      </Link>
     </div>
   );
 }

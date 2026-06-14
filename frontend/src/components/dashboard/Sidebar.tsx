@@ -133,10 +133,10 @@ export default function Sidebar() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-white/20 text-white'
-                    : 'text-white/65 hover:text-white hover:bg-white/10'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <item.icon size={15} />
@@ -149,10 +149,10 @@ export default function Sidebar() {
             <div key={item.label}>
               <button
                 onClick={() => toggle(item.label)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   childMatch
                     ? 'bg-white/15 text-white'
-                    : 'text-white/65 hover:text-white hover:bg-white/10'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <item.icon size={15} />
@@ -170,10 +170,10 @@ export default function Sidebar() {
                       <Link
                         key={child.href}
                         href={child.href}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
                           cActive
                             ? 'bg-white/20 text-white'
-                            : 'text-white/55 hover:text-white hover:bg-white/10'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
                         }`}
                       >
                         <child.icon size={12} />
@@ -189,8 +189,8 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-4 py-3 border-t border-white/10">
-        <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold">
-          IPN-DEV v1.0 · Local
+        <p className="text-xs text-white/30 font-medium">
+          IPN-DEV v1.0
         </p>
       </div>
     </aside>
