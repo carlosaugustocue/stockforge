@@ -1,5 +1,19 @@
 import { apiFetch } from '@/lib/api-client';
 
+export interface LoteMp {
+  lote_id: number;
+  materia_prima_id: number;
+  materia_prima: string;
+  unidad_medida: string;
+  bodega_id: number;
+  bodega: string;
+  tipo_bodega: 'principal' | 'produccion' | 'ventas';
+  cantidad_inicial: number;
+  cantidad_actual: number;
+  fecha_vencimiento: string | null;
+  fecha_ingreso: string;
+}
+
 export interface StockMp {
   materia_prima_id: number;
   nombre: string;
@@ -37,6 +51,9 @@ export const inventarioService = {
 
   alertas: () =>
     apiFetch<{ data: AlertaMp[] }>('/inventario/alertas').then(unwrap),
+
+  lotesMp: () =>
+    apiFetch<{ data: LoteMp[] }>('/inventario/lotes/mp').then(unwrap),
 
   trasladar: (body: TrasladoBody) =>
     apiFetch<{ data: unknown }>('/inventario/traslados', {

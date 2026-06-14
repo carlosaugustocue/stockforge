@@ -23,6 +23,8 @@ use App\Modules\Catalogo\Repositories\Contracts\ProductoTerminadoRepositoryInter
 use App\Modules\Catalogo\Repositories\Contracts\BodegaRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\PresentacionRepositoryInterface;
 use App\Modules\Catalogo\Repositories\Contracts\RelacionMpPtRepositoryInterface;
+use App\Modules\Catalogo\Repositories\Contracts\ProveedorRepositoryInterface;
+use App\Modules\Catalogo\Repositories\ProveedorRepository;
 use App\Modules\Catalogo\Repositories\MateriaPrimaRepository;
 use App\Modules\Catalogo\Repositories\ProductoTerminadoRepository;
 use App\Modules\Catalogo\Repositories\BodegaRepository;
@@ -57,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DespachoRepositoryInterface::class, DespachoRepository::class);
         $this->app->bind(ReportesRepositoryInterface::class, ReportesRepository::class);
         $this->app->bind(BitacoraRepositoryInterface::class, BitacoraRepository::class);
+        $this->app->bind(ProveedorRepositoryInterface::class, ProveedorRepository::class);
     }
 
     /**

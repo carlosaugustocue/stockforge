@@ -11,12 +11,19 @@ class RecepcionRepository implements RecepcionRepositoryInterface
 {
     public function todasLasOrdenes(): Collection
     {
-        return OrdenPedido::with('usuario')->orderByDesc('created_at')->get();
+        return OrdenPedido::with(['usuario', 'proveedor', 'items.materiaPrima.unidadMedida'])
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     public function ordenPorId(int $id): ?OrdenPedido
     {
-        return OrdenPedido::with(['usuario', 'recepciones.lotes.materiaPrima'])->find($id);
+        return OrdenPedido::with([
+            'usuario',
+            'proveedor',
+            'items.materiaPrima.unidadMedida',
+            'recepciones.lotes.materiaPrima',
+        ])->find($id);
     }
 
     public function crearOrden(array $data): OrdenPedido

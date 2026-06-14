@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, ShoppingBag } from 'lucide-react';
 import { reportesService } from '@/services/reportes.service';
+import { formatNum } from '@/lib/utils';
 
 interface LotePt {
   lote_id: number;
@@ -75,7 +76,7 @@ export default function StockPtPage() {
                 <div className="rounded-xl p-5 border-2 border-black/5 flex items-center gap-4" style={{ background: 'var(--bg-left)' }}>
                   <ShoppingBag size={22} className="text-green-500" />
                   <div>
-                    <p className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>{total.toLocaleString('es-CO')}</p>
+                    <p className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>{formatNum(total)}</p>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Unidades totales</p>
                   </div>
                 </div>
@@ -98,7 +99,7 @@ export default function StockPtPage() {
                       <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{l.producto_terminado}</td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{l.bodega}</td>
                       <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>
-                        {l.cantidad_actual.toLocaleString('es-CO')}
+                        {formatNum(l.cantidad_actual)}
                         <span className="ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{l.unidad_medida}</span>
                       </td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>

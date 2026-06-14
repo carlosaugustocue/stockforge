@@ -6,6 +6,8 @@ use App\Models\Bodega;
 use App\Models\LoteMateriaPrima;
 use App\Models\MovimientoInventario;
 use App\Models\OrdenPedido;
+use App\Models\OrdenPedidoItem;
+use App\Models\Proveedor;
 use App\Models\Recepcion;
 use App\Modules\Recepciones\Repositories\Contracts\RecepcionRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,13 +43,33 @@ class RecepcionService
 
     public function crearOrden(array $data, int $userId): OrdenPedido
     {
-        return $this->repo->crearOrden([
-            'proveedor'      => $data['proveedor'],
+        // Resolver nombre del proveedor desde FK o string libre
+        $proveedorNombre = $data['proveedor'] ?? null;
+        $proveedorId     = $data['proveedor_id'] ?? null;
+
+        if ($proveedorId && ! $proveedorNombre) {
+            $proveedorNombre = Proveedor::find($proveedorId)?->nombre ?? '';
+        }
+
+        $orden = $this->repo->crearOrden([
+            'proveedor'      => $proveedorNombre,
+            'proveedor_id'   => $proveedorId,
             'fecha_esperada' => $data['fecha_esperada'] ?? null,
             'observaciones'  => $data['observaciones'] ?? null,
             'user_id'        => $userId,
             'estado'         => 'pendiente',
         ]);
+
+        // Crear ítems de la orden si se proporcionaron
+        foreach ($data['items'] ?? [] as $item) {
+            OrdenPedidoItem::create([
+                'orden_pedido_id'     => $orden->id,
+                'materia_prima_id'    => $item['materia_prima_id'],
+                'cantidad_solicitada' => $item['cantidad_solicitada'],
+            ]);
+        }
+
+        return $orden->load(['items.materiaPrima', 'proveedor']);
     }
 
     public function actualizarOrden(OrdenPedido $orden, array $data): OrdenPedido

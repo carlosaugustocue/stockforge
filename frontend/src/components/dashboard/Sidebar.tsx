@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Scale, AlertTriangle, ArrowLeftRight,
   ChefHat, Flame, Truck, ClipboardList, PackageCheck,
   BarChart2, Box, ShoppingBag, Users, Lock, FileText,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Warehouse, Layers, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import { obtenerSesion } from '@/lib/session';
@@ -31,9 +31,12 @@ const NAV: NavItem[] = [
     icon: Scale,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Stock MP',   href: '/dashboard/inventario',           icon: Scale         },
-      { label: 'Alertas',    href: '/dashboard/inventario/alertas',   icon: AlertTriangle  },
-      { label: 'Traslados',  href: '/dashboard/inventario/traslados', icon: ArrowLeftRight },
+      { label: 'Stock MP',    href: '/dashboard/inventario',                icon: Scale          },
+      { label: 'Stock PT',    href: '/dashboard/inventario/stock-pt',       icon: ShoppingBag    },
+      { label: 'Lotes MP',   href: '/dashboard/inventario/lotes',          icon: Layers         },
+      { label: 'Bodegas',    href: '/dashboard/inventario/bodegas',        icon: Warehouse      },
+      { label: 'Alertas',    href: '/dashboard/inventario/alertas',        icon: AlertTriangle  },
+      { label: 'Traslados',  href: '/dashboard/inventario/traslados',      icon: ArrowLeftRight },
     ],
   },
   {
@@ -75,9 +78,10 @@ const NAV: NavItem[] = [
     icon: Box,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Materias Primas',    href: '/dashboard/catalogo/mp',      icon: Box          },
-      { label: 'Prod. Terminados',   href: '/dashboard/catalogo/pt',      icon: ShoppingBag  },
-      { label: 'Bodegas',            href: '/dashboard/catalogo/bodegas', icon: Scale        },
+      { label: 'Materias Primas',    href: '/dashboard/catalogo/mp',          icon: Box      },
+      { label: 'Prod. Terminados',   href: '/dashboard/catalogo/pt',          icon: ShoppingBag },
+      { label: 'Config. Bodegas',    href: '/dashboard/catalogo/bodegas',     icon: Settings },
+      { label: 'Proveedores',        href: '/dashboard/catalogo/proveedores', icon: Truck    },
     ],
   },
   {
@@ -132,10 +136,10 @@ export default function Sidebar() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-white/20 text-white'
-                    : 'text-white/65 hover:text-white hover:bg-white/10'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <item.icon size={15} />
@@ -148,10 +152,10 @@ export default function Sidebar() {
             <div key={item.label}>
               <button
                 onClick={() => toggle(item.label)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   childMatch
                     ? 'bg-white/15 text-white'
-                    : 'text-white/65 hover:text-white hover:bg-white/10'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <item.icon size={15} />
@@ -169,10 +173,10 @@ export default function Sidebar() {
                       <Link
                         key={child.href}
                         href={child.href}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
                           cActive
                             ? 'bg-white/20 text-white'
-                            : 'text-white/55 hover:text-white hover:bg-white/10'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
                         }`}
                       >
                         <child.icon size={12} />
@@ -188,8 +192,8 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-4 py-3 border-t border-white/10">
-        <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold">
-          IPN-DEV v1.0 · Local
+        <p className="text-xs text-white/30 font-medium">
+          IPN-DEV v1.0
         </p>
       </div>
     </aside>

@@ -36,8 +36,7 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleLogin} className="flex flex-col gap-6 w-full mt-8">
-      {/* Input de Correo */}
+    <form onSubmit={handleLogin} className="flex flex-col gap-5 w-full">
       <AuthInput
         id="email"
         label="Correo electrónico"
@@ -48,7 +47,6 @@ export default function LoginForm() {
         onChange={setEmail}
       />
 
-      {/* Input de Contraseña */}
       <AuthInput
         id="password"
         label="Contraseña"
@@ -68,16 +66,36 @@ export default function LoginForm() {
         }
       />
 
-      {error && <p className="text-xs text-red-500 font-medium text-center">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-100">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+          <p className="text-xs text-red-600 font-medium">{error}</p>
+        </div>
+      )}
 
-      {/* Botón de Ingreso */}
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-[var(--primary)] hover:bg-[var(--secondary)] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+        className="w-full text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none mt-1 shadow-md hover:shadow-lg"
+        style={{
+          background: loading
+            ? 'var(--primary)'
+            : 'linear-gradient(135deg, #8B2323 0%, #A52828 100%)',
+        }}
       >
-        {loading ? "Verificando..." : "Ingresar"}
-        {!loading && <ArrowRight size={18} />}
+        {loading ? (
+          <>
+            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+            Verificando…
+          </>
+        ) : (
+          <>
+            Ingresar al sistema
+            <ArrowRight size={16} />
+          </>
+        )}
       </button>
     </form>
   );

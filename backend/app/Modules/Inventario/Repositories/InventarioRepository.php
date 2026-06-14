@@ -61,4 +61,18 @@ class InventarioRepository implements InventarioRepositoryInterface
     {
         return LoteMateriaPrima::with(['bodega', 'materiaPrima'])->find($id);
     }
+
+    /**
+     * Todos los lotes de MP con cantidad_actual > 0, ordenados FEFO
+     * (fecha_vencimiento ASC, fecha_ingreso ASC).
+     */
+    public function lotesActivosMp(): Collection
+    {
+        return LoteMateriaPrima::query()
+            ->where('cantidad_actual', '>', 0)
+            ->with(['materiaPrima.unidadMedida', 'bodega'])
+            ->orderBy('fecha_vencimiento')
+            ->orderBy('fecha_ingreso')
+            ->get();
+    }
 }
