@@ -6,14 +6,31 @@ import {
   ClipboardList, ChefHat, CheckCircle2, Package, Search,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
 import { catalogoService, type ProductoTerminado, type RelacionMpPt } from '@/services/catalogo.service';
+import { inventarioService, type StockMp } from '@/services/inventario.service';
+import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
+import { recepcionesService } from '@/services/recepciones.service';
 import { formatCantidad, parseApiError, unidadAdmiteDecimales } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 
 /* ─────────────── Tipos ─────────────── */
 
-type Modal = 'crear' | 'requerimientos' | 'ejecutar' | 'traslado' | 'anular' | null;
+type Modal = 'crear' | 'requerimientos' | 'ejecutar' | 'traslado' | 'anular' | 'solicitar' | null;
+
+interface SolicitudItem {
+  materia_prima_id: number;
+  nombre: string;
+  unidad: string;
+  requerida: number;
+  disponible: number;
+  faltante: number;
+  cantidad: number;
+  proveedor_id: number | null;
+  seleccionado: boolean;
+  proveedores: Proveedor[];
+}
 
 interface StockErrorData {
   materia_prima: string;
@@ -243,14 +260,26 @@ export default function ProduccionPage() {
   // Form ejecutar
   const [cantProd, setCantProd] = useState('');
 
+  // Datos auxiliares para solicitar faltantes
+  const [proveedores,    setProveedores]    = useState<Proveedor[]>([]);
+  const [stockMp,        setStockMp]        = useState<StockMp[]>([]);
+  const [solicitudItems, setSolicitudItems] = useState<SolicitudItem[]>([]);
+  const [fechaPedido,    setFechaPedido]    = useState('');
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const [msgPedido,      setMsgPedido]      = useState('');
+
   const cargar = () => {
     setLoading(true);
     Promise.allSettled([
       produccionService.listarOrdenes(),
       catalogoService.productosTerminados(),
-    ]).then(([o, p]) => {
+      proveedoresService.listar(),
+      inventarioService.stockMp(),
+    ]).then(([o, p, prov, stock]) => {
       if (o.status === 'fulfilled') setOrdenes(o.value);
       if (p.status === 'fulfilled') setProductos(p.value);
+      if (prov.status === 'fulfilled') setProveedores(prov.value);
+      if (stock.status === 'fulfilled') setStockMp(stock.value);
     }).finally(() => setLoading(false));
   };
 
@@ -266,6 +295,35 @@ export default function ProduccionPage() {
       .finally(() => setLoadingRels(false));
   }, [ptId]);
 
+  /* Calcula qué MPs faltan en Bodega Principal para la cantidad actual */
+  const faltantes = useMemo<SolicitudItem[]>(() => {
+    const cantNum = parseFloat(cantidad) || 0;
+    if (!ptId || cantNum <= 0 || !relacionesPt.length) return [];
+    return relacionesPt.flatMap(r => {
+      const totalReq   = r.cantidad_requerida * cantNum;
+      const stockItem  = stockMp.find(s => s.materia_prima_id === r.materia_prima_id);
+      const disponible = stockItem?.stock_total ?? 0;
+      if (disponible >= totalReq) return [];
+      const provMP = proveedores.filter(p =>
+        p.materias_primas.some(mp => mp.id === r.materia_prima_id)
+      );
+      return [{
+        materia_prima_id: r.materia_prima_id,
+        nombre:           r.materia_prima_nombre,
+        unidad:           r.unidad_medida?.nombre ?? '',
+        requerida:        totalReq,
+        disponible,
+        faltante:         totalReq - disponible,
+        cantidad:         totalReq - disponible,
+        proveedor_id:     provMP[0]?.id ?? null,
+        seleccionado:     true,
+        proveedores:      provMP.length ? provMP : proveedores,
+      }];
+    });
+  }, [ptId, cantidad, relacionesPt, stockMp, proveedores]);
+
+  const hayFaltantes = faltantes.length > 0;
+
   /* ── Handlers ── */
 
   const abrirCrear = () => {
@@ -276,6 +334,53 @@ export default function ProduccionPage() {
     setRelacionesPt([]);
     setBusquedaPt('');
     setModal('crear');
+  };
+
+  const handleAbrirSolicitar = () => {
+    const now = new Date();
+    now.setDate(now.getDate() + 3);
+    setFechaPedido(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+    setSolicitudItems(faltantes.map(f => ({ ...f })));
+    setMsgPedido('');
+    setModal('solicitar');
+  };
+
+  const handleCrearPedidos = async () => {
+    const seleccionados = solicitudItems.filter(i => i.seleccionado);
+    if (!seleccionados.length) return;
+    if (seleccionados.some(i => !i.proveedor_id)) {
+      setMsgPedido('Selecciona un proveedor para cada material.');
+      return;
+    }
+    setEnviandoPedido(true); setMsgPedido('');
+    // Agrupar por proveedor_id
+    const grupos = seleccionados.reduce((acc, item) => {
+      const key = item.proveedor_id!;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {} as Record<number, SolicitudItem[]>);
+    try {
+      await Promise.all(
+        Object.entries(grupos).map(([provId, items]) =>
+          recepcionesService.crearOrden({
+            proveedor_id:   parseInt(provId),
+            fecha_esperada: fechaPedido || undefined,
+            items: items.map(i => ({
+              materia_prima_id:   i.materia_prima_id,
+              cantidad_solicitada: i.cantidad,
+            })),
+          })
+        )
+      );
+      const n = Object.keys(grupos).length;
+      setModal(null);
+      setMsgOk(`${n} orden${n > 1 ? 'es' : ''} de compra creada${n > 1 ? 's' : ''}. Cuando lleguen los materiales, regístralos en Recepciones y vuelve para crear la orden de producción.`);
+    } catch (err: unknown) {
+      setMsgPedido((err as Error).message ?? 'Error al crear las órdenes de compra.');
+    } finally {
+      setEnviandoPedido(false);
+    }
   };
 
   const handleCrear = async (e: React.FormEvent) => {
@@ -641,7 +746,7 @@ export default function ProduccionPage() {
                         </div>
                       </div>
 
-                      {/* Ingredientes requeridos */}
+                      {/* Ingredientes requeridos con estado de stock */}
                       <div className="rounded-xl border border-slate-100 overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -665,19 +770,38 @@ export default function ProduccionPage() {
                         ) : (
                           <div className="divide-y divide-slate-50">
                             {relacionesPt.map(r => {
-                              const total = cantNum > 0 ? r.cantidad_requerida * cantNum : null;
+                              const total       = cantNum > 0 ? r.cantidad_requerida * cantNum : null;
+                              const stockItem   = stockMp.find(s => s.materia_prima_id === r.materia_prima_id);
+                              const disponible  = stockItem?.stock_total ?? 0;
+                              const ok          = total == null || disponible >= total;
                               return (
                                 <div key={r.materia_prima_id}
-                                  className="flex items-center justify-between px-4 py-2.5">
-                                  <span className="text-xs font-medium text-slate-600 truncate flex-1 mr-3">
-                                    {r.materia_prima_nombre}
-                                  </span>
-                                  <div className="flex-shrink-0">
+                                  className={`flex items-center justify-between px-4 py-2.5 ${!ok ? 'bg-red-50/40' : ''}`}>
+                                  <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ok ? 'bg-green-400' : 'bg-red-400'}`} />
+                                    <span className="text-xs font-medium text-slate-700 truncate">
+                                      {r.materia_prima_nombre}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 flex-shrink-0 text-right">
                                     {total != null ? (
-                                      <span className="text-xs font-semibold tabular-nums"
-                                        style={{ color: 'var(--primary)' }}>
-                                        {formatCantidad(total, r.unidad_medida?.nombre)}
-                                      </span>
+                                      <>
+                                        <div>
+                                          <p className="text-[10px] text-slate-400">Disponible</p>
+                                          <p className={`text-xs font-bold tabular-nums ${ok ? 'text-green-600' : 'text-red-600'}`}>
+                                            {formatCantidad(disponible, r.unidad_medida?.nombre)}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[10px] text-slate-400">Requerido</p>
+                                          <p className="text-xs font-semibold tabular-nums text-slate-700">
+                                            {formatCantidad(total, r.unidad_medida?.nombre)}
+                                          </p>
+                                        </div>
+                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                          {ok ? '✓ OK' : `−${formatCantidad(total - disponible, r.unidad_medida?.nombre)}`}
+                                        </span>
+                                      </>
                                     ) : (
                                       <span className="text-xs text-slate-400 tabular-nums">
                                         × {formatCantidad(r.cantidad_requerida, r.unidad_medida?.nombre)} / ud
@@ -689,6 +813,15 @@ export default function ProduccionPage() {
                             })}
                           </div>
                         )}
+                        {/* Resumen de faltantes */}
+                        {hayFaltantes && cantNum > 0 && (
+                          <div className="px-4 py-2.5 bg-red-50 border-t border-red-100 flex items-center gap-2">
+                            <AlertTriangle size={12} className="text-red-500 flex-shrink-0" />
+                            <p className="text-xs text-red-700">
+                              <strong>{faltantes.length} materia{faltantes.length > 1 ? 's primas' : ' prima'}</strong> con stock insuficiente en Bodega Principal
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Acciones */}
@@ -697,11 +830,20 @@ export default function ProduccionPage() {
                           className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
                           Cancelar
                         </button>
-                        <button type="submit" disabled={enviando || !ptId || !cantidad || !fecha}
-                          className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
-                          style={{ background: 'var(--primary)' }}>
-                          {enviando ? 'Creando…' : 'Crear orden'}
-                        </button>
+                        {hayFaltantes && cantNum > 0 ? (
+                          <button type="button" onClick={handleAbrirSolicitar}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all flex items-center justify-center gap-1.5"
+                            style={{ background: '#d97706' }}>
+                            <Package size={14} />
+                            Solicitar faltantes ({faltantes.length})
+                          </button>
+                        ) : (
+                          <button type="submit" disabled={enviando || !ptId || !cantidad || !fecha}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
+                            style={{ background: 'var(--primary)' }}>
+                            {enviando ? 'Creando…' : 'Crear orden'}
+                          </button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -886,6 +1028,157 @@ export default function ProduccionPage() {
 
           <ModalActions onCancel={() => setModal(null)} loading={enviando} label="Sí, anular orden" danger onClick={handleAnular} />
         </ModalShell>
+      )}
+
+      {/* ── Modal: Solicitar materiales faltantes ── */}
+      {modal === 'solicitar' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
+
+            {/* Cabecera */}
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                    <Package size={14} className="text-amber-600" />
+                  </div>
+                  <h2 className="text-base font-black" style={{ color: 'var(--text-main)' }}>
+                    Solicitar materiales faltantes
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-400 ml-9">
+                  Crea las órdenes de compra para los materiales que faltan
+                </p>
+              </div>
+              <button onClick={() => setModal('crear')} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <X size={15} className="text-slate-400" />
+              </button>
+            </div>
+
+            {/* Cuerpo */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+              <p className="text-xs text-slate-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+                <strong className="text-amber-700">{solicitudItems.filter(i => i.seleccionado).length} material{solicitudItems.filter(i => i.seleccionado).length !== 1 ? 'es' : ''}</strong> seleccionado{solicitudItems.filter(i => i.seleccionado).length !== 1 ? 's' : ''} para solicitar.
+                Las órdenes se agruparán por proveedor automáticamente.
+              </p>
+
+              {/* Items */}
+              <div className="space-y-3">
+                {solicitudItems.map((item, idx) => (
+                  <div key={item.materia_prima_id}
+                    className={`rounded-xl border transition-colors ${item.seleccionado ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100 bg-slate-50/50 opacity-60'}`}>
+                    {/* Encabezado del item */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                      <input
+                        type="checkbox"
+                        checked={item.seleccionado}
+                        onChange={e => setSolicitudItems(prev => prev.map((it, i) =>
+                          i === idx ? { ...it, seleccionado: e.target.checked } : it
+                        ))}
+                        className="w-4 h-4 rounded accent-amber-600 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">{item.nombre}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-[11px] text-slate-400">
+                            Requerido: <strong className="text-slate-600">{formatCantidad(item.requerida, item.unidad)}</strong>
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Disponible: <strong className="text-amber-600">{formatCantidad(item.disponible, item.unidad)}</strong>
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+                            Falta {formatCantidad(item.faltante, item.unidad)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Controles del item */}
+                    {item.seleccionado && (
+                      <div className="px-4 py-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                            Cantidad a pedir
+                          </label>
+                          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                            <input
+                              type="number"
+                              min="0.001"
+                              step="0.001"
+                              value={item.cantidad}
+                              onChange={e => setSolicitudItems(prev => prev.map((it, i) =>
+                                i === idx ? { ...it, cantidad: parseFloat(e.target.value) || 0 } : it
+                              ))}
+                              className="flex-1 px-3 py-2 text-sm focus:outline-none bg-white min-w-0"
+                            />
+                            {item.unidad && (
+                              <span className="px-2 py-2 text-xs text-slate-400 bg-slate-50 border-l border-slate-200 flex items-center">
+                                {item.unidad}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                            Proveedor
+                          </label>
+                          <select
+                            value={item.proveedor_id ?? ''}
+                            onChange={e => setSolicitudItems(prev => prev.map((it, i) =>
+                              i === idx ? { ...it, proveedor_id: e.target.value ? parseInt(e.target.value) : null } : it
+                            ))}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none appearance-none">
+                            <option value="">— Seleccionar —</option>
+                            {item.proveedores.map(p => (
+                              <option key={p.id} value={p.id}>{p.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Fecha esperada */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Fecha esperada de entrega
+                </label>
+                <input
+                  type="date"
+                  value={fechaPedido}
+                  onChange={e => setFechaPedido(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 bg-white"
+                  style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                />
+              </div>
+
+              {msgPedido && <ErrBox msg={msgPedido} />}
+
+              <p className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3">
+                Se crearán las órdenes agrupadas por proveedor. Cuando lleguen los materiales, regístralos
+                en <Link href="/dashboard/recepciones" className="underline font-semibold">Recepciones</Link> y vuelve para crear la orden de producción.
+              </p>
+            </div>
+
+            {/* Pie */}
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-2">
+              <button onClick={() => setModal('crear')}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+                ← Volver
+              </button>
+              <button
+                onClick={handleCrearPedidos}
+                disabled={enviandoPedido || !solicitudItems.some(i => i.seleccionado)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all flex items-center justify-center gap-1.5"
+                style={{ background: '#d97706' }}>
+                {enviandoPedido ? 'Creando…' : `Crear orden${Object.keys(solicitudItems.filter(i => i.seleccionado).reduce((a, i) => { a[i.proveedor_id ?? 0] = true; return a; }, {} as Record<number, boolean>)).length > 1 ? 'es' : ''} de compra`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
