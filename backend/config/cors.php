@@ -20,8 +20,10 @@ return [
     // Métodos HTTP permitidos
     'allowed_methods' => ['*'],
 
-    // Orígenes permitidos — el frontend Next.js corre en localhost:3000
-    'allowed_origins' => ['http://localhost:3000'],
+    // Orígenes permitidos — se configura via CORS_ALLOWED_ORIGINS en .env
+    'allowed_origins' => array_filter(array_map('trim', explode(',',
+        env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+    ))),
 
     // Permite comodines en los orígenes (desactivado por seguridad)
     'allowed_origins_patterns' => [],
