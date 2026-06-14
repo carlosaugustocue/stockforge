@@ -11,6 +11,7 @@ use App\Modules\Inventario\Controllers\InventarioController;
 use App\Modules\Produccion\Controllers\ProduccionController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
 use App\Modules\Despacho\Controllers\DespachoController;
+use App\Modules\Clientes\Controllers\ClienteController;
 use App\Modules\Reportes\Controllers\ReportesController;
 use Illuminate\Support\Facades\Route;
 
@@ -186,6 +187,20 @@ Route::middleware(['auth:sanctum', 'permission:despachos.leer'])->group(function
 
 Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(function () {
     Route::post('/despachos', [DespachoController::class, 'registrar']);
+});
+
+// -------------------------------------------------------------------------
+// MÓDULO CLIENTES — Gestión de clientes persona/empresa
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:despachos.leer'])->group(function () {
+    Route::get('/clientes',      [ClienteController::class, 'index']);
+    Route::get('/clientes/{id}', [ClienteController::class, 'show']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(function () {
+    Route::post('/clientes',           [ClienteController::class, 'store']);
+    Route::patch('/clientes/{id}',     [ClienteController::class, 'update']);
+    Route::delete('/clientes/{id}',    [ClienteController::class, 'destroy']);
 });
 
 // -------------------------------------------------------------------------

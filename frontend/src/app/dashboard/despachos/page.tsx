@@ -3,10 +3,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   RefreshCw, Plus, X, Truck, Package,
-  Search, ArrowRight, User, Calendar,
+  Search, ArrowRight, User, Calendar, Building2,
 } from 'lucide-react';
 import { despachosService } from '@/services/despachos.service';
 import { reportesService } from '@/services/reportes.service';
+import { clientesService, type Cliente } from '@/services/clientes.service';
 import { formatNum } from '@/lib/utils';
 
 /* ─── tipos ──────────────────────────────────────────────────────────── */
@@ -18,6 +19,7 @@ interface DespachoRaw {
   despachado_en: string;
   usuario?: { nombre: string };
   lote_pt?: { producto_terminado?: { nombre: string } };
+  cliente?: { id: number; tipo: string; nombre: string; nit_cedula: string | null } | null;
 }
 
 interface LotePt {
@@ -54,28 +56,42 @@ function iniciales(nombre: string): string {
 /* ─── página ─────────────────────────────────────────────────────────── */
 
 export default function DespachosPage() {
-  const [despachos, setDespachos] = useState<DespachoRaw[]>([]);
-  const [lotesPt,   setLotesPt]   = useState<LotePt[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(false);
-  const [enviando,  setEnviando]  = useState(false);
-  const [msgOk,     setMsgOk]     = useState('');
-  const [msgErr,    setMsgErr]    = useState('');
-  const [busqueda,  setBusqueda]  = useState('');
+  const [despachos,  setDespachos]  = useState<DespachoRaw[]>([]);
+  const [lotesPt,    setLotesPt]    = useState<LotePt[]>([]);
+  const [clientes,   setClientes]   = useState<Cliente[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [modal,      setModal]      = useState(false);
+  const [enviando,   setEnviando]   = useState(false);
+  const [msgOk,      setMsgOk]      = useState('');
+  const [msgErr,     setMsgErr]     = useState('');
+  const [busqueda,   setBusqueda]   = useState('');
 
   /* form */
-  const [loteId,   setLoteId]   = useState('');
-  const [cantidad, setCantidad] = useState('');
-  const [cliente,  setCliente]  = useState('');
+  const [loteId,     setLoteId]     = useState('');
+  const [cantidad,   setCantidad]   = useState('');
+  const [clienteId,  setClienteId]  = useState('');
+  const [clienteRef, setClienteRef] = useState('');
+  const [buscCliente, setBuscCliente] = useState('');
+
+  const clienteSeleccionado = clientes.find(c => String(c.id) === clienteId);
+  const clientesFiltrados   = clientes.filter(c =>
+    c.activo && (
+      !buscCliente.trim() ||
+      c.nombre.toLowerCase().includes(buscCliente.toLowerCase()) ||
+      (c.nit_cedula ?? '').includes(buscCliente)
+    )
+  ).slice(0, 8);
 
   const cargar = () => {
     setLoading(true);
     Promise.allSettled([
       despachosService.listar(),
       reportesService.stockPt(),
-    ]).then(([d, s]) => {
+      clientesService.listar(),
+    ]).then(([d, s, c]) => {
       if (d.status === 'fulfilled') setDespachos(d.value as unknown as DespachoRaw[]);
       if (s.status === 'fulfilled') setLotesPt((s.value as StockPtResponse).detalle ?? []);
+      if (c.status === 'fulfilled') setClientes(c.value);
     }).finally(() => setLoading(false));
   };
 
@@ -90,7 +106,9 @@ export default function DespachosPage() {
   const abrirModal = (lote?: LotePt) => {
     setLoteId(lote ? String(lote.lote_id) : '');
     setCantidad('');
-    setCliente('');
+    setClienteId('');
+    setClienteRef('');
+    setBuscCliente('');
     setMsgErr('');
     setModal(true);
   };
@@ -102,7 +120,8 @@ export default function DespachosPage() {
       await despachosService.registrar({
         lote_pt_id:         parseInt(loteId),
         cantidad:           parseFloat(cantidad),
-        referencia_cliente: cliente || undefined,
+        cliente_id:         clienteId ? parseInt(clienteId) : undefined,
+        referencia_cliente: clienteRef || undefined,
       });
       setMsgOk('Despacho registrado correctamente.');
       setModal(false);
@@ -328,8 +347,17 @@ export default function DespachosPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3.5 hidden sm:table-cell">
-                            {d.referencia_cliente ? (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-xs font-semibold text-blue-700">
+                            {d.cliente ? (
+                              <div className="flex items-center gap-1.5">
+                                <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${d.cliente.tipo === 'empresa' ? 'bg-blue-100' : 'bg-violet-100'}`}>
+                                  {d.cliente.tipo === 'empresa'
+                                    ? <Building2 size={10} className="text-blue-600" />
+                                    : <User size={10} className="text-violet-600" />}
+                                </div>
+                                <span className="text-xs font-semibold text-slate-700 truncate max-w-[120px]">{d.cliente.nombre}</span>
+                              </div>
+                            ) : d.referencia_cliente ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
                                 {d.referencia_cliente}
                               </span>
                             ) : (
@@ -493,18 +521,87 @@ export default function DespachosPage() {
                     )}
                   </div>
 
-                  {/* Cliente / referencia */}
+                  {/* Cliente */}
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
-                      Cliente / Referencia de pedido
+                      Cliente
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Nombre del cliente o número de pedido"
-                      value={cliente}
-                      onChange={e => setCliente(e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)]"
-                    />
+
+                    {clientes.length > 0 ? (
+                      <>
+                        {/* Búsqueda de cliente */}
+                        {!clienteSeleccionado ? (
+                          <div className="space-y-1.5">
+                            <div className="relative">
+                              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="Buscar cliente por nombre o NIT…"
+                                value={buscCliente}
+                                onChange={e => setBuscCliente(e.target.value)}
+                                className="w-full pl-8 pr-3 py-2.5 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)]"
+                              />
+                            </div>
+                            {(buscCliente || clientesFiltrados.length <= 5) && (
+                              <div className="border-2 border-black/10 rounded-xl overflow-hidden">
+                                {clientesFiltrados.length === 0 ? (
+                                  <p className="text-xs text-slate-400 px-3 py-2.5 text-center">Sin resultados</p>
+                                ) : (
+                                  clientesFiltrados.map(c => (
+                                    <button key={c.id} type="button"
+                                      onClick={() => { setClienteId(String(c.id)); setBuscCliente(''); }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0">
+                                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${c.tipo === 'empresa' ? 'bg-blue-50' : 'bg-violet-50'}`}>
+                                        {c.tipo === 'empresa'
+                                          ? <Building2 size={12} className="text-blue-600" />
+                                          : <User size={12} className="text-violet-600" />}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 truncate">{c.nombre}</p>
+                                        {c.nit_cedula && (
+                                          <p className="text-[10px] text-slate-400">{c.tipo === 'empresa' ? 'NIT' : 'CC'}: {c.nit_cedula}</p>
+                                        )}
+                                      </div>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* Cliente seleccionado */
+                          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${clienteSeleccionado.tipo === 'empresa' ? 'bg-blue-100' : 'bg-violet-100'}`}>
+                              {clienteSeleccionado.tipo === 'empresa'
+                                ? <Building2 size={16} className="text-blue-600" />
+                                : <User size={16} className="text-violet-600" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-black text-slate-800 truncate">{clienteSeleccionado.nombre}</p>
+                              <p className="text-[10px] text-slate-500">
+                                {clienteSeleccionado.tipo === 'empresa' ? 'Empresa' : 'Persona'}
+                                {clienteSeleccionado.nit_cedula ? ` · ${clienteSeleccionado.tipo === 'empresa' ? 'NIT' : 'CC'} ${clienteSeleccionado.nit_cedula}` : ''}
+                              </p>
+                            </div>
+                            <button type="button" onClick={() => setClienteId('')}
+                              className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+
+                    {/* Referencia libre (cuando no hay cliente o como complemento) */}
+                    {!clienteSeleccionado && (
+                      <input
+                        type="text"
+                        placeholder={clientes.length > 0 ? 'O escribe una referencia libre…' : 'Nombre del cliente o número de pedido'}
+                        value={clienteRef}
+                        onChange={e => setClienteRef(e.target.value)}
+                        className="w-full px-3 py-2.5 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)] mt-1.5"
+                      />
+                    )}
                   </div>
                 </form>
               )}

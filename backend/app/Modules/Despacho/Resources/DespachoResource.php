@@ -20,6 +20,14 @@ class DespachoResource extends JsonResource
             'cantidad'           => $this->cantidad,
             'referencia_cliente' => $this->referencia_cliente,
             'despachado_en'      => $this->created_at->toDateTimeString(),
+            'cliente'            => $this->whenLoaded('cliente', fn() => $this->cliente ? [
+                'id'              => $this->cliente->id,
+                'tipo'            => $this->cliente->tipo,
+                'nombre'          => $this->cliente->nombre,
+                'nit_cedula'      => $this->cliente->nit_cedula,
+                'telefono'        => $this->cliente->telefono,
+                'contacto_nombre' => $this->cliente->contacto_nombre,
+            ] : null),
             'usuario'            => $this->whenLoaded('usuario', fn() => [
                 'id'     => $this->usuario->id,
                 'nombre' => $this->usuario->name,

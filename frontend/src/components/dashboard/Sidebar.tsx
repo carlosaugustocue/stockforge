@@ -60,7 +60,8 @@ const NAV: NavItem[] = [
     icon: Truck,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Lista', href: '/dashboard/despachos', icon: Truck },
+      { label: 'Lista',     href: '/dashboard/despachos', icon: Truck  },
+      { label: 'Clientes',  href: '/dashboard/clientes',  icon: Users  },
     ],
   },
   {

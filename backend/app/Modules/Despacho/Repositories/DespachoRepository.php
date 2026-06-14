@@ -15,7 +15,7 @@ class DespachoRepository implements DespachoRepositoryInterface
 {
     public function todos(): Collection
     {
-        return Despacho::with(['lotePt.productoTerminado', 'lotePt.bodega', 'usuario', 'movimiento'])
+        return Despacho::with(['lotePt.productoTerminado', 'lotePt.bodega', 'usuario', 'movimiento', 'cliente'])
             ->latest()
             ->get();
     }
