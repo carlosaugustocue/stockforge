@@ -51,7 +51,7 @@ class ProduccionService
     public function crearOrden(array $data, int $userId): OrdenProduccion
     {
         $bodegaPrincipal = Bodega::where('tipo', 'principal')->firstOrFail();
-        $pt = \App\Models\ProductoTerminado::with('relaciones.materiaPrima')->findOrFail($data['producto_terminado_id']);
+        $pt = \App\Models\ProductoTerminado::with('relaciones.materiaPrima.unidadMedida')->findOrFail($data['producto_terminado_id']);
         $cantidad = (float) $data['cantidad_planificada'];
 
         // Validar stock y calcular requerimientos antes de persistir
@@ -65,6 +65,7 @@ class ProduccionService
             if ($disponible < $cantidadNeeded) {
                 throw new \RuntimeException(json_encode([
                     'materia_prima' => $mp->nombre,
+                    'unidad_medida' => $mp->unidadMedida?->nombre ?? '',
                     'requerida'     => $cantidadNeeded,
                     'disponible'    => round($disponible, 3),
                     'faltante'      => round($cantidadNeeded - $disponible, 3),
@@ -118,13 +119,13 @@ class ProduccionService
         $cantidadReal    = (float) $data['cantidad_producida'];
 
         return DB::transaction(function () use ($orden, $cantidadReal, $userId, $bodegaPrincipal, $bodegaPlanta) {
-            $pt = \App\Models\ProductoTerminado::with('relaciones.materiaPrima')->findOrFail($orden->producto_terminado_id);
+            $pt = \App\Models\ProductoTerminado::with('relaciones.materiaPrima.unidadMedida')->findOrFail($orden->producto_terminado_id);
 
             // Calcular consumo real y ejecutar FEFO con lockForUpdate
             foreach ($pt->relaciones as $relacion) {
                 $mp           = $relacion->materiaPrima;
                 $cantNeeded   = round($relacion->cantidad_requerida * $cantidadReal, 3);
-                $planConsumo  = $this->fefo->planificarConsumo($mp->id, $bodegaPrincipal->id, $cantNeeded, $mp->nombre);
+                $planConsumo  = $this->fefo->planificarConsumo($mp->id, $bodegaPrincipal->id, $cantNeeded, $mp->nombre, $mp->unidadMedida?->nombre ?? '');
 
                 foreach ($planConsumo as ['lote' => $lote, 'cantidad_a_consumir' => $aConsumir]) {
                     // Bloqueo pesimista — evita doble descuento bajo concurrencia (RNFPER-04)

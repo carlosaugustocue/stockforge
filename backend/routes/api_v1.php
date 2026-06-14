@@ -3,6 +3,7 @@
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Catalogo\Controllers\BodegaController;
 use App\Modules\Catalogo\Controllers\MateriaPrimaController;
+use App\Modules\Catalogo\Controllers\ProveedorController;
 use App\Modules\Catalogo\Controllers\PresentacionController;
 use App\Modules\Catalogo\Controllers\ProductoTerminadoController;
 use App\Modules\Permisos\Controllers\PermissionController;
@@ -86,6 +87,11 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.leer'])->group(function (
     Route::get('/bodegas/{id}', [BodegaController::class, 'show']);
 });
 
+Route::middleware(['auth:sanctum', 'permission:materias_primas.leer'])->group(function () {
+    Route::get('/proveedores',       [ProveedorController::class, 'index']);
+    Route::get('/proveedores/{id}',  [ProveedorController::class, 'show']);
+});
+
 // -------------------------------------------------------------------------
 // MÓDULO CATÁLOGO — Escritura (permiso dinámico por recurso)
 // -------------------------------------------------------------------------
@@ -94,6 +100,10 @@ Route::middleware(['auth:sanctum', 'permission:materias_primas.escribir'])->grou
     Route::patch('/materias-primas/{id}',    [MateriaPrimaController::class, 'update']);
     Route::delete('/materias-primas/{id}',   [MateriaPrimaController::class, 'destroy']);
     Route::post('/materias-primas/importar', [MateriaPrimaController::class, 'importar']);
+
+    Route::post('/proveedores',          [ProveedorController::class, 'store']);
+    Route::patch('/proveedores/{id}',    [ProveedorController::class, 'update']);
+    Route::delete('/proveedores/{id}',   [ProveedorController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'permission:productos_terminados.escribir'])->group(function () {

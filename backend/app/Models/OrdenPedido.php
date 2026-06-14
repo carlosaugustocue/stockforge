@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Modelo OrdenPedido
  *
+ * Se agrega proveedor_id FK al catálogo de proveedores y la relación items.
+ *
  * Representa una orden de compra emitida a un proveedor.
  * El sistema no acepta recepciones sin una orden previa (RFREC).
  *
@@ -24,6 +26,7 @@ class OrdenPedido extends Model
 
     protected $fillable = [
         'proveedor',
+        'proveedor_id',
         'estado',
         'fecha_esperada',
         'observaciones',
@@ -40,6 +43,16 @@ class OrdenPedido extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'proveedor_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrdenPedidoItem::class);
     }
 
     public function recepciones(): HasMany
