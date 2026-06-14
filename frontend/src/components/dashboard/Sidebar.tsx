@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Scale, AlertTriangle, ArrowLeftRight,
   ChefHat, Flame, Truck, ClipboardList, PackageCheck,
   BarChart2, Box, ShoppingBag, Users, Lock, FileText,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Warehouse,
 } from 'lucide-react';
 import { useState } from 'react';
 import { obtenerSesion } from '@/lib/session';
@@ -31,9 +31,10 @@ const NAV: NavItem[] = [
     icon: Scale,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Stock MP',   href: '/dashboard/inventario',           icon: Scale         },
-      { label: 'Alertas',    href: '/dashboard/inventario/alertas',   icon: AlertTriangle  },
-      { label: 'Traslados',  href: '/dashboard/inventario/traslados', icon: ArrowLeftRight },
+      { label: 'Stock MP',    href: '/dashboard/inventario',                icon: Scale         },
+      { label: 'Bodegas',    href: '/dashboard/inventario/bodegas',        icon: Warehouse     },
+      { label: 'Alertas',    href: '/dashboard/inventario/alertas',        icon: AlertTriangle },
+      { label: 'Traslados',  href: '/dashboard/inventario/traslados',      icon: ArrowLeftRight },
     ],
   },
   {
