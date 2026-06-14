@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   RefreshCw, Warehouse, Package, AlertTriangle,
-  Clock, Search, ChevronDown, ChevronUp,
+  Search, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { catalogoService, type Bodega } from '@/services/catalogo.service';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
@@ -160,8 +160,6 @@ export default function BodegasStockPage() {
   /* KPIs */
   const totalItems   = bodegasConStock.reduce((s, b) => s + b.items.length + b.itemsPt.length, 0);
   const totalAlertas = bodegasConStock.reduce((s, b) => s + b.items.filter(i => i.bajo_reorden).length, 0);
-  const totalVencen  = bodegasConStock.reduce((s, b) =>
-    s + b.items.filter(i => { const d = diasHasta(i.proximo_vencimiento); return d !== null && d >= 0 && d <= 30; }).length, 0);
   const totalLotesPt = bodegasConStock.reduce((s, b) => s + b.itemsPt.length, 0);
 
   const toggleCollapse = (id: number) =>
