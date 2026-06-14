@@ -60,13 +60,15 @@ test('test_sin_token_no_puede_trasladar', function () {
 test('test_gerencia_no_puede_trasladar_mp', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::GERENCIA);
     $lote = crearLoteEnPrincipal(20.0);
-    $bodegaProduccion = Bodega::where('tipo', 'produccion')->first();
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
+    $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaProduccion->id,
-            'cantidad'          => 10,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 10,
         ])
         ->assertStatus(403);
 });
@@ -74,14 +76,16 @@ test('test_gerencia_no_puede_trasladar_mp', function () {
 // ── Test 3: Encargado puede realizar traslado parcial — RFINV04 ───────────────
 test('test_encargado_puede_trasladar_parcial', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
-    $lote = crearLoteEnPrincipal(50.0);
+    $lote          = crearLoteEnPrincipal(50.0);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $response = $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 20,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 20,
         ])
         ->assertStatus(201)
         ->assertJsonPath('data.traslado_total', false);
@@ -100,14 +104,16 @@ test('test_encargado_puede_trasladar_parcial', function () {
 // ── Test 4: Jefe puede realizar traslado total — RFINV04 ──────────────────────
 test('test_jefe_puede_trasladar_total', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::JEFE_PRODUCCION);
-    $lote = crearLoteEnPrincipal(30.0);
+    $lote          = crearLoteEnPrincipal(30.0);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 30,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 30,
         ])
         ->assertStatus(201)
         ->assertJsonPath('data.traslado_total', true);
@@ -120,14 +126,16 @@ test('test_jefe_puede_trasladar_total', function () {
 // ── Test 5: Traslado genera movimientos SALIDA y ENTRADA — HU-027 ─────────────
 test('test_traslado_genera_movimientos_inmutables', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
-    $lote = crearLoteEnPrincipal(40.0);
+    $lote          = crearLoteEnPrincipal(40.0);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 15,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 15,
         ])
         ->assertStatus(201);
 
@@ -138,14 +146,16 @@ test('test_traslado_genera_movimientos_inmutables', function () {
 // ── Test 6: Stock insuficiente retorna 422 ────────────────────────────────────
 test('test_traslado_con_cantidad_mayor_al_stock_retorna_422', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
-    $lote = crearLoteEnPrincipal(10.0);
+    $lote          = crearLoteEnPrincipal(10.0);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 50,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 50,
         ])
         ->assertStatus(422);
 });
@@ -153,14 +163,15 @@ test('test_traslado_con_cantidad_mayor_al_stock_retorna_422', function () {
 // ── Test 7: Bodega destino igual a origen retorna 422 ────────────────────────
 test('test_traslado_misma_bodega_retorna_422', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
-    $lote = crearLoteEnPrincipal(20.0);
+    $lote        = crearLoteEnPrincipal(20.0);
     $bodegaOrigen = Bodega::where('tipo', 'principal')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaOrigen->id,
-            'cantidad'          => 10,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaOrigen->id,
+            'cantidad'         => 10,
         ])
         ->assertStatus(422);
 });
@@ -170,13 +181,15 @@ test('test_traslado_parcial_hereda_fecha_vencimiento', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
     $vencimiento   = now()->addMonths(3)->toDateString();
     $lote          = crearLoteEnPrincipal(30.0, $vencimiento);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $lote->id,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 10,
+            'materia_prima_id' => $lote->materia_prima_id,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 10,
         ])
         ->assertStatus(201);
 
@@ -184,16 +197,18 @@ test('test_traslado_parcial_hereda_fecha_vencimiento', function () {
     expect($loteDestino->fecha_vencimiento->toDateString())->toBe($vencimiento);
 });
 
-// ── Test 9: Lote inexistente retorna 422 de validación ───────────────────────
-test('test_traslado_lote_inexistente_retorna_422', function () {
+// ── Test 9: MP inexistente retorna 422 de validación ─────────────────────────
+test('test_traslado_mp_inexistente_retorna_422', function () {
     ['token' => $token] = crearUsuarioTraslado(Role::ENCARGADO_INVENTARIOS);
+    $bodegaOrigen  = Bodega::where('tipo', 'principal')->first();
     $bodegaDestino = Bodega::where('tipo', 'produccion')->first();
 
     $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => 9999,
-            'bodega_destino_id' => $bodegaDestino->id,
-            'cantidad'          => 10,
+            'materia_prima_id' => 9999,
+            'bodega_origen_id' => $bodegaOrigen->id,
+            'bodega_destino_id'=> $bodegaDestino->id,
+            'cantidad'         => 10,
         ])
         ->assertStatus(422);
 });
