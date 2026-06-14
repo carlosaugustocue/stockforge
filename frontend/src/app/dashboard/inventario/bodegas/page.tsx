@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { catalogoService, type Bodega } from '@/services/catalogo.service';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
+import { reportesService } from '@/services/reportes.service';
 import { formatCantidad } from '@/lib/utils';
 
 /* ─── tipos ──────────────────────────────────────────────────────────── */
@@ -21,8 +22,23 @@ interface ItemBodega {
   bajo_reorden: boolean;
 }
 
+interface LotePt {
+  lote_id: number;
+  producto_terminado: string;
+  bodega: string;
+  cantidad_actual: number;
+  unidad_medida: string;
+  fecha_produccion: string;
+  orden_produccion_id: number;
+}
+
+interface StockPtResponse {
+  detalle: LotePt[];
+}
+
 interface BodegaConStock extends Bodega {
   items: ItemBodega[];
+  itemsPt: LotePt[];
 }
 
 /* ─── constantes visuales ─────────────────────────────────────────────── */
@@ -75,8 +91,9 @@ function VencimientoBadge({ fecha }: { fecha: string | null }) {
 /* ─── página ──────────────────────────────────────────────────────────── */
 
 export default function BodegasStockPage() {
-  const [bodegas, setBodegas] = useState<Bodega[]>([]);
-  const [stock,   setStock]   = useState<StockMp[]>([]);
+  const [bodegas,  setBodegas]  = useState<Bodega[]>([]);
+  const [stock,    setStock]    = useState<StockMp[]>([]);
+  const [lotesPt,  setLotesPt]  = useState<LotePt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todas');
@@ -86,8 +103,12 @@ export default function BodegasStockPage() {
   const cargar = () => {
     setLoading(true);
     setError('');
-    Promise.all([catalogoService.bodegas(), inventarioService.stockMp()])
-      .then(([b, s]) => { setBodegas(b); setStock(s); })
+    Promise.all([catalogoService.bodegas(), inventarioService.stockMp(), reportesService.stockPt()])
+      .then(([b, s, pt]) => {
+        setBodegas(b);
+        setStock(s);
+        setLotesPt((pt as StockPtResponse).detalle ?? []);
+      })
       .catch(e => setError(e.message ?? 'Error al cargar datos'))
       .finally(() => setLoading(false));
   };
@@ -116,9 +137,12 @@ export default function BodegasStockPage() {
         if (a.bajo_reorden !== b.bajo_reorden) return a.bajo_reorden ? -1 : 1;
         return a.nombre.localeCompare(b.nombre);
       });
-      return { ...b, items };
+      const itemsPt = lotesPt
+        .filter(l => l.bodega === b.nombre && l.cantidad_actual > 0)
+        .sort((a, c) => a.producto_terminado.localeCompare(c.producto_terminado));
+      return { ...b, items, itemsPt };
     });
-  }, [bodegas, stock]);
+  }, [bodegas, stock, lotesPt]);
 
   /* filtros */
   const filtradas = useMemo<BodegaConStock[]>(() => {
@@ -134,10 +158,11 @@ export default function BodegasStockPage() {
   }, [bodegasConStock, filtroTipo, busqueda]);
 
   /* KPIs */
-  const totalItems   = bodegasConStock.reduce((s, b) => s + b.items.length, 0);
+  const totalItems   = bodegasConStock.reduce((s, b) => s + b.items.length + b.itemsPt.length, 0);
   const totalAlertas = bodegasConStock.reduce((s, b) => s + b.items.filter(i => i.bajo_reorden).length, 0);
   const totalVencen  = bodegasConStock.reduce((s, b) =>
     s + b.items.filter(i => { const d = diasHasta(i.proximo_vencimiento); return d !== null && d >= 0 && d <= 30; }).length, 0);
+  const totalLotesPt = bodegasConStock.reduce((s, b) => s + b.itemsPt.length, 0);
 
   const toggleCollapse = (id: number) =>
     setCollapsed(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
@@ -170,10 +195,10 @@ export default function BodegasStockPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {([
-          { label: 'Bodegas',        value: bodegas.length, Icon: Warehouse,     color: 'text-blue-600',  bg: 'bg-blue-50'   },
-          { label: 'Items en stock', value: totalItems,     Icon: Package,       color: 'text-slate-600', bg: 'bg-slate-100' },
-          { label: 'Bajo reorden',   value: totalAlertas,   Icon: AlertTriangle, color: 'text-red-600',   bg: 'bg-red-50'    },
-          { label: 'Vencen ≤ 30 d', value: totalVencen,    Icon: Clock,         color: 'text-amber-600', bg: 'bg-amber-50'  },
+          { label: 'Bodegas',         value: bodegas.length, Icon: Warehouse,     color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { label: 'MPs en stock',    value: totalItems - totalLotesPt, Icon: Package, color: 'text-slate-600', bg: 'bg-slate-100' },
+          { label: 'Lotes PT',        value: totalLotesPt,   Icon: Package,       color: 'text-green-600',  bg: 'bg-green-50'  },
+          { label: 'Bajo reorden',    value: totalAlertas,   Icon: AlertTriangle, color: 'text-red-600',    bg: 'bg-red-50'    },
         ] as const).map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
             <div className={`w-9 h-9 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
@@ -265,9 +290,23 @@ export default function BodegasStockPage() {
                   </div>
 
                   <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                    <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                      {bodega.items.length} item{bodega.items.length !== 1 ? 's' : ''}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {bodega.items.length > 0 && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 tabular-nums">
+                          {bodega.items.length} MP
+                        </span>
+                      )}
+                      {bodega.itemsPt.length > 0 && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 tabular-nums">
+                          {bodega.itemsPt.length} PT
+                        </span>
+                      )}
+                      {bodega.items.length === 0 && bodega.itemsPt.length === 0 && (
+                        <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          Vacía
+                        </span>
+                      )}
+                    </div>
                     {isCollapsed
                       ? <ChevronDown size={16} className="text-slate-400" />
                       : <ChevronUp   size={16} className="text-slate-400" />}
@@ -276,88 +315,154 @@ export default function BodegasStockPage() {
 
                 {/* Tabla de ítems */}
                 {!isCollapsed && (
-                  bodega.items.length === 0 ? (
-                    <div className="px-6 py-10 text-center border-t border-slate-50">
-                      <Package size={32} className="mx-auto mb-2 text-slate-200" />
-                      <p className="text-sm font-semibold text-slate-400">Sin stock de materias primas</p>
-                      {bodega.tipo === 'ventas' ? (
-                        <p className="text-xs text-slate-400 mt-1">
-                          El stock de <strong>Producto Terminado</strong> en ventas se consulta en{' '}
-                          <a href="/dashboard/inventario/stock-pt" className="underline hover:text-slate-600 transition-colors">
-                            Inventario → Stock PT
-                          </a>.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-300 mt-0.5">No hay materias primas almacenadas aquí actualmente.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border-t border-slate-100">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-slate-50">
-                            <th className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-3">
-                              Materia Prima
-                            </th>
-                            <th className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-3">
-                              Stock actual
-                            </th>
-                            <th className="text-center text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-3">
-                              Lotes
-                            </th>
-                            <th className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-3">
-                              Próx. vencimiento
-                            </th>
-                            <th className="text-center text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-3">
-                              Estado
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {bodega.items.map(item => (
-                            <tr
-                              key={item.materia_prima_id}
-                              className={`transition-colors hover:bg-slate-50/70 ${item.bajo_reorden ? 'bg-red-50/40' : ''}`}
-                            >
-                              <td className="px-6 py-3.5">
-                                <div className="flex items-center gap-2.5">
-                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.bajo_reorden ? 'bg-red-500' : 'bg-green-400'}`} />
-                                  <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
-                                    {item.nombre}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3.5 text-right">
-                                <span className="text-sm font-black tabular-nums" style={{ color: 'var(--text-main)' }}>
-                                  {formatCantidad(item.stock, item.unidad_medida)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5 text-center">
-                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-xs font-black text-slate-600">
-                                  {item.lotes_activos}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5">
-                                <VencimientoBadge fecha={item.proximo_vencimiento} />
-                              </td>
-                              <td className="px-4 py-3.5 text-center">
-                                {item.bajo_reorden ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                                    <AlertTriangle size={10} />
-                                    Bajo reorden
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                                    ✓ OK
-                                  </span>
-                                )}
-                              </td>
+                  <>
+                    {/* Sección Materias Primas */}
+                    {bodega.items.length === 0 ? (
+                      <div className="px-6 py-8 text-center border-t border-slate-50">
+                        <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest">Sin stock de materias primas</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto border-t border-slate-100">
+                        <div className="px-6 pt-3 pb-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Materias Primas</span>
+                        </div>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-slate-50">
+                              <th className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-2.5">
+                                Materia Prima
+                              </th>
+                              <th className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5">
+                                Stock actual
+                              </th>
+                              <th className="text-center text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5">
+                                Lotes
+                              </th>
+                              <th className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5">
+                                Próx. vencimiento
+                              </th>
+                              <th className="text-center text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5">
+                                Estado
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {bodega.items.map(item => (
+                              <tr
+                                key={item.materia_prima_id}
+                                className={`transition-colors hover:bg-slate-50/70 ${item.bajo_reorden ? 'bg-red-50/40' : ''}`}
+                              >
+                                <td className="px-6 py-3.5">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.bajo_reorden ? 'bg-red-500' : 'bg-green-400'}`} />
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
+                                      {item.nombre}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3.5 text-right">
+                                  <span className="text-sm font-black tabular-nums" style={{ color: 'var(--text-main)' }}>
+                                    {formatCantidad(item.stock, item.unidad_medida)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-xs font-black text-slate-600">
+                                    {item.lotes_activos}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <VencimientoBadge fecha={item.proximo_vencimiento} />
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  {item.bajo_reorden ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                                      <AlertTriangle size={10} />
+                                      Bajo reorden
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                      ✓ OK
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Sección Producto Terminado */}
+                    {bodega.itemsPt.length > 0 && (
+                      <div className="overflow-x-auto border-t-2 border-green-100">
+                        <div className="px-6 pt-3 pb-1 flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-green-600">Producto Terminado</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-green-100 text-green-700">
+                            {bodega.itemsPt.length} lote{bodega.itemsPt.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-green-50/60">
+                              <th className="text-left text-[10px] font-black uppercase tracking-widest text-green-500 px-6 py-2.5">
+                                Producto
+                              </th>
+                              <th className="text-right text-[10px] font-black uppercase tracking-widest text-green-500 px-4 py-2.5">
+                                Stock actual
+                              </th>
+                              <th className="text-left text-[10px] font-black uppercase tracking-widest text-green-500 px-4 py-2.5">
+                                Fecha producción
+                              </th>
+                              <th className="text-center text-[10px] font-black uppercase tracking-widest text-green-500 px-4 py-2.5">
+                                OP #
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-green-50">
+                            {bodega.itemsPt.map(lote => (
+                              <tr key={lote.lote_id} className="hover:bg-green-50/40 transition-colors">
+                                <td className="px-6 py-3.5">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-400" />
+                                    <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
+                                      {lote.producto_terminado}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3.5 text-right">
+                                  <span className="text-sm font-black tabular-nums" style={{ color: 'var(--text-main)' }}>
+                                    {formatCantidad(lote.cantidad_actual, lote.unidad_medida)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <span className="text-sm text-slate-500">
+                                    {new Date(lote.fecha_produccion.length === 10
+                                      ? lote.fecha_produccion + 'T12:00:00'
+                                      : lote.fecha_produccion
+                                    ).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black bg-green-100 text-green-700">
+                                    #{lote.orden_produccion_id}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Vacía completamente */}
+                    {bodega.items.length === 0 && bodega.itemsPt.length === 0 && (
+                      <div className="px-6 py-10 text-center border-t border-slate-50">
+                        <Package size={32} className="mx-auto mb-2 text-slate-200" />
+                        <p className="text-sm font-semibold text-slate-400">Bodega vacía</p>
+                        <p className="text-xs text-slate-300 mt-0.5">No hay materias primas ni producto terminado almacenado aquí.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );
