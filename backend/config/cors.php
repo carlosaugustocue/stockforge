@@ -25,8 +25,10 @@ return [
         env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
     ))),
 
-    // Permite comodines en los orígenes (desactivado por seguridad)
-    'allowed_origins_patterns' => [],
+    // Patrones regex para orígenes — cubre deploys de preview de Vercel
+    'allowed_origins_patterns' => array_filter(array_map('trim', explode(',',
+        env('CORS_ALLOWED_ORIGINS_PATTERNS', '')
+    ))),
 
     // Headers que el cliente puede enviar
     'allowed_headers' => ['*'],
