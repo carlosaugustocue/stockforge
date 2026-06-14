@@ -32,6 +32,9 @@ class OrdenProduccionResource extends JsonResource
                 $this->requerimientos->map(fn($req) => [
                     'materia_prima_id'   => $req->materia_prima_id,
                     'materia_prima'      => $req->relationLoaded('materiaPrima') ? $req->materiaPrima->nombre : null,
+                    'unidad_medida'      => $req->relationLoaded('materiaPrima') && $req->materiaPrima->relationLoaded('unidadMedida')
+                        ? $req->materiaPrima->unidadMedida?->nombre
+                        : null,
                     'cantidad_requerida' => $req->cantidad_requerida,
                     'lote_sugerido_id'   => $req->lote_sugerido_id,
                 ])

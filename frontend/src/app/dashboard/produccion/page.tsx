@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
 import { catalogoService, type ProductoTerminado, type RelacionMpPt } from '@/services/catalogo.service';
-import { formatNum } from '@/lib/utils';
+import { formatNum, formatCantidad, parseApiError, unidadAdmiteDecimales } from '@/lib/utils';
 
 /* ─────────────── Tipos ─────────────── */
 
@@ -116,14 +116,15 @@ function OrderCard({
         <div>
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Planificado</p>
           <p className="text-sm font-semibold text-slate-700 tabular-nums mt-0.5">
-            {formatNum(orden.cantidad_planificada)}
-            {orden.producto_terminado?.unidad ? ` ${orden.producto_terminado.unidad}` : ''}
+            {formatCantidad(orden.cantidad_planificada, orden.producto_terminado?.unidad)}
           </p>
         </div>
         <div>
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Producido</p>
           <p className="text-sm font-semibold text-slate-700 tabular-nums mt-0.5">
-            {orden.cantidad_producida != null ? formatNum(orden.cantidad_producida) : '—'}
+            {orden.cantidad_producida != null
+              ? formatCantidad(orden.cantidad_producida, orden.producto_terminado?.unidad)
+              : '—'}
           </p>
         </div>
         <div>
@@ -280,7 +281,7 @@ export default function ProduccionPage() {
       setModal('requerimientos');
       cargar();
     } catch (err: unknown) {
-      setMsgErr((err as Error).message ?? 'Error al crear la orden');
+      setMsgErr(parseApiError((err as Error).message ?? 'Error al crear la orden'));
     } finally {
       setEnviando(false);
     }
@@ -306,7 +307,7 @@ export default function ProduccionPage() {
       setMsgOk(`Producción ejecutada — Orden #${selected!.id} · PT creado en Planta de Producción.`);
       setModal(null); cargar();
     } catch (err: unknown) {
-      setMsgErr((err as Error).message ?? 'Error al ejecutar la producción');
+      setMsgErr(parseApiError((err as Error).message ?? 'Error al ejecutar la producción'));
     } finally {
       setEnviando(false);
     }
@@ -319,7 +320,7 @@ export default function ProduccionPage() {
       setMsgOk(`Traslado completado — Orden #${selected!.id} · PT en Bodega de Ventas, listo para despacho.`);
       setModal(null); cargar();
     } catch (err: unknown) {
-      setMsgErr((err as Error).message ?? 'Error al trasladar el PT');
+      setMsgErr(parseApiError((err as Error).message ?? 'Error al trasladar el PT'));
     } finally {
       setEnviando(false);
     }
@@ -485,11 +486,11 @@ export default function ProduccionPage() {
         </div>
       )}
 
-      {/* ── Modal: Crear orden — Panel dos columnas ── */}
+      {/* ── Modal: Crear orden ── */}
       {modal === 'crear' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 overflow-hidden flex flex-col"
-            style={{ maxHeight: '90vh' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl border border-slate-100 flex flex-col"
+            style={{ maxHeight: '88vh' }}>
 
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
@@ -503,201 +504,183 @@ export default function ProduccionPage() {
               </button>
             </div>
 
-            {/* Body: dos paneles */}
-            <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            {/* Cuerpo — un solo scroll */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
 
-              {/* Panel izquierdo — Selector de producto */}
-              <div className="w-60 flex-shrink-0 flex flex-col border-r border-slate-100 overflow-hidden">
-                <div className="px-4 pt-4 pb-3 flex-shrink-0">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                    Producto
+              {/* Paso A: elegir producto */}
+              {!ptId ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    Producto a producir
                   </p>
                   <div className="relative">
                     <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Buscar..."
+                      placeholder="Buscar producto..."
                       value={busquedaPt}
                       onChange={e => setBusquedaPt(e.target.value)}
-                      className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-200 text-xs bg-slate-50 focus:outline-none focus:bg-white focus:border-slate-300 transition-colors"
+                      autoFocus
+                      className="w-full pl-7 pr-3 py-2.5 rounded-lg border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:bg-white focus:border-slate-300 transition-colors"
                     />
                   </div>
-                </div>
-                <div className="overflow-y-auto flex-1 px-2 pb-4 space-y-0.5">
-                  {productos
-                    .filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase()))
-                    .map(p => {
-                      const activo = ptId === String(p.id);
-                      return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {productos
+                      .filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase()))
+                      .map(p => (
                         <button
                           key={p.id}
                           type="button"
                           onClick={() => setPtId(String(p.id))}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl transition-all ${
-                            activo
-                              ? 'text-white shadow-sm'
-                              : 'text-slate-600 hover:bg-slate-50'
-                          }`}
-                          style={activo ? { background: 'var(--primary)' } : undefined}>
-                          <div className="text-sm font-medium truncate leading-tight">{p.nombre}</div>
+                          className="text-left px-3 py-3 rounded-xl border border-slate-100 hover:border-slate-300 hover:shadow-sm transition-all group">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2"
+                            style={{ background: 'rgba(139,35,35,0.07)' }}>
+                            <ChefHat size={14} style={{ color: 'var(--primary)' }} />
+                          </div>
+                          <div className="text-sm font-semibold text-slate-700 leading-tight truncate">{p.nombre}</div>
                           {p.unidad_medida && (
-                            <div className={`text-[10px] mt-0.5 ${activo ? 'text-white/65' : 'text-slate-400'}`}>
+                            <div className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">
                               {p.unidad_medida.nombre}
                             </div>
                           )}
                         </button>
-                      );
-                    })}
-                  {productos.filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase())).length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-6">Sin resultados</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Panel derecho — Formulario + preview */}
-              <div className="flex-1 overflow-y-auto">
-                {!ptId ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 gap-3 py-12 px-8">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center">
-                      <ChefHat size={26} className="text-slate-300" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-500">Elige un producto</p>
-                      <p className="text-xs mt-1 text-slate-400">
-                        Selecciona el producto en el panel izquierdo para configurar la orden
-                      </p>
-                    </div>
+                      ))}
+                    {productos.filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase())).length === 0 && (
+                      <p className="col-span-3 text-xs text-slate-400 text-center py-8">Sin resultados</p>
+                    )}
                   </div>
-                ) : (() => {
-                  const pt       = productos.find(p => String(p.id) === ptId);
-                  const cantNum  = parseFloat(cantidad) || 0;
-                  const unidad   = pt?.unidad_medida?.nombre ?? '';
+                </div>
+              ) : (() => {
+                const pt      = productos.find(p => String(p.id) === ptId);
+                const cantNum = parseFloat(cantidad) || 0;
+                const unidad  = pt?.unidad_medida?.nombre ?? '';
 
-                  return (
-                    <div className="p-6 space-y-5">
+                return (
+                  <div className="space-y-4">
 
-                      {/* Producto seleccionado */}
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(139,35,35,0.1)' }}>
-                          <ChefHat size={18} style={{ color: 'var(--primary)' }} />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-800 text-sm">{pt?.nombre}</p>
-                          {pt?.unidad_medida && (
-                            <p className="text-xs text-slate-400 mt-0.5">Unidad: {pt.unidad_medida.nombre}</p>
-                          )}
-                        </div>
-                        <button type="button" onClick={() => setPtId('')}
-                          className="ml-auto p-1 rounded-md hover:bg-slate-200 transition-colors">
-                          <X size={13} className="text-slate-400" />
-                        </button>
+                    {/* Producto seleccionado */}
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(139,35,35,0.1)' }}>
+                        <ChefHat size={16} style={{ color: 'var(--primary)' }} />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm truncate">{pt?.nombre}</p>
+                        {pt?.unidad_medida && (
+                          <p className="text-[11px] text-slate-400 mt-0.5 uppercase tracking-wide">{pt.unidad_medida.nombre}</p>
+                        )}
+                      </div>
+                      <button type="button" onClick={() => { setPtId(''); setBusquedaPt(''); }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors flex-shrink-0">
+                        <X size={12} />
+                        Cambiar
+                      </button>
+                    </div>
 
-                      {msgErr && <ErrBox msg={msgErr} />}
+                    {msgErr && <ErrBox msg={msgErr} />}
 
-                      <form onSubmit={handleCrear} className="space-y-4">
+                    <form onSubmit={handleCrear} className="space-y-4">
 
-                        {/* Cantidad + fecha */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                              Cantidad a producir
-                            </label>
-                            <div className="flex rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2"
-                              style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}>
-                              <input
-                                type="number" step="0.001" min="0.001"
-                                value={cantidad} onChange={e => setCantidad(e.target.value)}
-                                placeholder="0"
-                                className="flex-1 px-3 py-2.5 text-sm focus:outline-none bg-white min-w-0"
-                                required />
-                              {unidad && (
-                                <span className="px-3 py-2.5 text-xs text-slate-500 font-medium bg-slate-50 border-l border-slate-200 flex items-center flex-shrink-0">
-                                  {unidad}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                              Fecha planificada
-                            </label>
-                            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-                              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-white"
-                              style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                      {/* Cantidad + fecha */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                            Cantidad a producir
+                          </label>
+                          <div className="flex rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2"
+                            style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}>
+                            <input
+                              type="number"
+                              step={unidadAdmiteDecimales(unidad) ? '0.001' : '1'}
+                              min={unidadAdmiteDecimales(unidad) ? '0.001' : '1'}
+                              value={cantidad} onChange={e => setCantidad(e.target.value)}
+                              placeholder="0" autoFocus
+                              className="flex-1 px-3 py-2.5 text-sm focus:outline-none bg-white min-w-0"
                               required />
-                          </div>
-                        </div>
-
-                        {/* Preview de ingredientes */}
-                        <div className="rounded-xl border border-slate-100 overflow-hidden">
-                          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Ingredientes requeridos
-                            </p>
-                            {cantNum > 0 && (
-                              <span className="text-xs text-slate-400">
-                                para <strong className="text-slate-600">{cantNum}</strong> {unidad}
+                            {unidad && (
+                              <span className="px-3 py-2.5 text-xs text-slate-500 font-medium bg-slate-50 border-l border-slate-200 flex items-center flex-shrink-0">
+                                {unidad}
                               </span>
                             )}
                           </div>
-                          {loadingRels ? (
-                            <div className="py-6 flex justify-center">
-                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-t-transparent"
-                                style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
-                            </div>
-                          ) : relacionesPt.length === 0 ? (
-                            <div className="py-6 text-center">
-                              <p className="text-xs text-slate-400">Sin ingredientes configurados para este producto</p>
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-slate-50 max-h-44 overflow-y-auto">
-                              {relacionesPt.map(r => {
-                                const total = cantNum > 0 ? r.cantidad_requerida * cantNum : null;
-                                return (
-                                  <div key={r.materia_prima_id}
-                                    className="flex items-center justify-between px-4 py-2.5">
-                                    <span className="text-xs font-medium text-slate-600 truncate flex-1 mr-3">
-                                      {r.materia_prima_nombre}
-                                    </span>
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      {total != null ? (
-                                        <span className="text-xs font-semibold tabular-nums"
-                                          style={{ color: 'var(--primary)' }}>
-                                          {formatNum(total)}
-                                          {r.unidad_medida?.nombre ? ` ${r.unidad_medida.nombre}` : ''}
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs text-slate-400 tabular-nums">
-                                          × {formatNum(r.cantidad_requerida)} {r.unidad_medida?.nombre ?? ''}/ud
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                            Fecha planificada
+                          </label>
+                          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-white"
+                            style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                            required />
+                        </div>
+                      </div>
+
+                      {/* Ingredientes requeridos */}
+                      <div className="rounded-xl border border-slate-100 overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Ingredientes requeridos
+                          </p>
+                          {cantNum > 0 && (
+                            <span className="text-xs text-slate-400">
+                              para <strong className="text-slate-600">{formatCantidad(cantNum, unidad)}</strong>
+                            </span>
                           )}
                         </div>
+                        {loadingRels ? (
+                          <div className="py-6 flex justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-t-transparent"
+                              style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
+                          </div>
+                        ) : relacionesPt.length === 0 ? (
+                          <div className="py-5 text-center">
+                            <p className="text-xs text-slate-400">Sin ingredientes configurados</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-50">
+                            {relacionesPt.map(r => {
+                              const total = cantNum > 0 ? r.cantidad_requerida * cantNum : null;
+                              return (
+                                <div key={r.materia_prima_id}
+                                  className="flex items-center justify-between px-4 py-2.5">
+                                  <span className="text-xs font-medium text-slate-600 truncate flex-1 mr-3">
+                                    {r.materia_prima_nombre}
+                                  </span>
+                                  <div className="flex-shrink-0">
+                                    {total != null ? (
+                                      <span className="text-xs font-semibold tabular-nums"
+                                        style={{ color: 'var(--primary)' }}>
+                                        {formatCantidad(total, r.unidad_medida?.nombre)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400 tabular-nums">
+                                        × {formatCantidad(r.cantidad_requerida, r.unidad_medida?.nombre)} / ud
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
 
-                        {/* Acciones */}
-                        <div className="flex gap-2 pt-1">
-                          <button type="button" onClick={() => setModal(null)}
-                            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
-                            Cancelar
-                          </button>
-                          <button type="submit" disabled={enviando || !ptId || !cantidad || !fecha}
-                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
-                            style={{ background: 'var(--primary)' }}>
-                            {enviando ? 'Creando…' : 'Crear orden'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  );
-                })()}
-              </div>
+                      {/* Acciones */}
+                      <div className="flex gap-2 pt-1">
+                        <button type="button" onClick={() => setModal(null)}
+                          className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+                          Cancelar
+                        </button>
+                        <button type="submit" disabled={enviando || !ptId || !cantidad || !fecha}
+                          className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
+                          style={{ background: 'var(--primary)' }}>
+                          {enviando ? 'Creando…' : 'Crear orden'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -714,7 +697,8 @@ export default function ProduccionPage() {
             <CheckCircle2 size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-green-700">
               Orden creada. Para producir{' '}
-              <strong>{formatNum(ordenCreada.cantidad_planificada)}</strong> unidades el sistema necesita:
+              <strong>{formatCantidad(ordenCreada.cantidad_planificada, ordenCreada.producto_terminado?.unidad)}</strong>
+              {' '}el sistema necesita:
             </p>
           </div>
 
@@ -732,7 +716,7 @@ export default function ProduccionPage() {
                     <td className="px-4 py-2.5 font-medium text-slate-700">{r.materia_prima}</td>
                     <td className="px-4 py-2.5 text-right font-semibold tabular-nums"
                       style={{ color: 'var(--primary)' }}>
-                      {formatNum(r.cantidad_requerida)}
+                      {formatCantidad(r.cantidad_requerida, r.unidad_medida)}
                     </td>
                   </tr>
                 ))}
@@ -785,7 +769,7 @@ export default function ProduccionPage() {
             <div className="flex justify-between items-center text-sm mt-2">
               <span className="text-slate-500">Cantidad planificada</span>
               <span className="font-semibold text-slate-800 tabular-nums">
-                {formatNum(selected.cantidad_planificada)}
+                {formatCantidad(selected.cantidad_planificada, selected.producto_terminado?.unidad)}
               </span>
             </div>
           </div>
@@ -793,12 +777,22 @@ export default function ProduccionPage() {
           {msgErr && <ErrBox msg={msgErr} />}
 
           <form onSubmit={handleEjecutar} className="space-y-4">
-            <Field label="Cantidad realmente producida">
-              <input type="number" step="0.001" min="0.001" value={cantProd}
-                onChange={e => setCantProd(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                required />
+            <Field label={`Cantidad realmente producida${selected.producto_terminado?.unidad ? ` (${selected.producto_terminado.unidad})` : ''}`}>
+              {(() => {
+                const decimales = unidadAdmiteDecimales(selected.producto_terminado?.unidad);
+                return (
+                  <input
+                    type="number"
+                    step={decimales ? '0.001' : '1'}
+                    min={decimales ? '0.001' : '1'}
+                    value={cantProd}
+                    onChange={e => setCantProd(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                    required
+                  />
+                );
+              })()}
               <p className="text-xs text-slate-400 mt-1.5">
                 Puede diferir de lo planificado. El consumo de MP se ajustará a la cantidad real.
               </p>
@@ -826,7 +820,10 @@ export default function ProduccionPage() {
             <div className="flex justify-between items-center text-sm mt-2">
               <span className="text-slate-500">Cantidad producida</span>
               <span className="font-semibold text-slate-800 tabular-nums">
-                {selected.cantidad_producida != null ? formatNum(selected.cantidad_producida) : formatNum(selected.cantidad_planificada)}
+                {formatCantidad(
+                  selected.cantidad_producida ?? selected.cantidad_planificada,
+                  selected.producto_terminado?.unidad
+                )}
               </span>
             </div>
           </div>

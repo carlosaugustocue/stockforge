@@ -66,7 +66,8 @@ class FefoService
         int $materiaPrimaId,
         int $bodegaId,
         float $cantidadRequerida,
-        string $nombreMp = 'MP'
+        string $nombreMp = 'MP',
+        string $unidadMedida = ''
     ): array {
         $lotes     = $this->lotesDisponibles($materiaPrimaId, $bodegaId);
         $pendiente = $cantidadRequerida;
@@ -83,6 +84,7 @@ class FefoService
         if ($pendiente > 0.0001) { // tolerancia para decimales
             throw new \RuntimeException(json_encode([
                 'materia_prima' => $nombreMp,
+                'unidad_medida' => $unidadMedida,
                 'requerida'     => $cantidadRequerida,
                 'disponible'    => round($cantidadRequerida - $pendiente, 3),
                 'faltante'      => round($pendiente, 3),

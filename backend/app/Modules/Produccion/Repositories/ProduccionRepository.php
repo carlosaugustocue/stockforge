@@ -10,7 +10,7 @@ class ProduccionRepository implements ProduccionRepositoryInterface
 {
     public function todasLasOrdenes(): Collection
     {
-        return OrdenProduccion::with(['productoTerminado', 'usuario', 'requerimientos.materiaPrima'])
+        return OrdenProduccion::with(['productoTerminado.unidadMedida', 'usuario', 'requerimientos.materiaPrima.unidadMedida'])
             ->orderByDesc('created_at')
             ->get();
     }

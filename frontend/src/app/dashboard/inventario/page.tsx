@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Scale, AlertTriangle, RefreshCw, Search } from 'lucide-react';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
-import { formatNum } from '@/lib/utils';
+import { formatCantidad } from '@/lib/utils';
 
 export default function StockMpPage() {
   const [stock,   setStock]   = useState<StockMp[]>([]);
@@ -105,10 +105,10 @@ export default function StockMpPage() {
               {/* Stock total */}
               <div className="flex items-baseline gap-1 mb-3">
                 <span className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-                  {formatNum(mp.stock_total)}
+                  {formatCantidad(mp.stock_total, mp.unidad_medida)}
                 </span>
                 <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                  {mp.unidad_medida} totales
+                  totales
                 </span>
               </div>
 
@@ -116,7 +116,7 @@ export default function StockMpPage() {
               <div className="flex items-center justify-between text-xs mb-3">
                 <span style={{ color: 'var(--text-muted)' }}>Punto de reorden:</span>
                 <span className="font-black" style={{ color: 'var(--text-main)' }}>
-                  {formatNum(mp.punto_reorden)} {mp.unidad_medida}
+                  {formatCantidad(mp.punto_reorden, mp.unidad_medida)}
                 </span>
               </div>
 
@@ -130,7 +130,7 @@ export default function StockMpPage() {
                       </span>
                       <div className="text-right">
                         <span className="font-black" style={{ color: 'var(--text-main)' }}>
-                          {formatNum(b.stock)} {mp.unidad_medida}
+                          {formatCantidad(b.stock, mp.unidad_medida)}
                         </span>
                         {b.proximo_vencimiento && (
                           <p className="text-[9px] text-orange-500 font-bold">

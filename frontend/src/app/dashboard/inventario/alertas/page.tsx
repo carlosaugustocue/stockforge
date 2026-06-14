@@ -5,7 +5,7 @@ import { AlertTriangle, RefreshCw, Plus, ShoppingCart, X, Trash2, Phone, Mail } 
 import { inventarioService, type AlertaMp } from '@/services/inventario.service';
 import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { recepcionesService } from '@/services/recepciones.service';
-import { formatNum } from '@/lib/utils';
+import { formatNum, formatCantidad } from '@/lib/utils';
 
 interface ItemOrden {
   materia_prima_id: number;
@@ -184,15 +184,15 @@ export default function AlertasPage() {
                   <div className="flex gap-3">
                     <div className="flex-1 rounded-lg p-2.5 border border-red-100 bg-red-50">
                       <p className="text-[9px] font-black uppercase tracking-widest text-red-400">Stock actual</p>
-                      <p className="text-lg font-black text-red-600">{formatNum(mp.stock_total)}</p>
+                      <p className="text-lg font-black text-red-600">{formatCantidad(mp.stock_total, mp.unidad_medida)}</p>
                     </div>
                     <div className="flex-1 rounded-lg p-2.5 border border-black/5" style={{ background: 'var(--bg-right)' }}>
                       <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Punto reorden</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--text-main)' }}>{formatNum(mp.punto_reorden)}</p>
+                      <p className="text-lg font-black" style={{ color: 'var(--text-main)' }}>{formatCantidad(mp.punto_reorden, mp.unidad_medida)}</p>
                     </div>
                     <div className="flex-1 rounded-lg p-2.5 border border-orange-100 bg-orange-50">
                       <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Faltante</p>
-                      <p className="text-lg font-black text-orange-600">{formatNum(mp.faltante)}</p>
+                      <p className="text-lg font-black text-orange-600">{formatCantidad(mp.faltante, mp.unidad_medida)}</p>
                     </div>
                   </div>
 

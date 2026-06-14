@@ -3,6 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 export interface RequerimientoMaterial {
   materia_prima_id: number;
   materia_prima: string | null;
+  unidad_medida: string | null;
   cantidad_requerida: number;
   lote_sugerido_id: number | null;
 }
