@@ -13,7 +13,8 @@ import { formatCantidad } from '@/lib/utils';
 function diasHasta(fecha: string | null): number | null {
   if (!fecha) return null;
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const f   = new Date(fecha); f.setHours(0, 0, 0, 0);
+  const f   = new Date(fecha.length === 10 ? fecha + 'T12:00:00' : fecha);
+  f.setHours(0, 0, 0, 0);
   return Math.ceil((f.getTime() - hoy.getTime()) / 86_400_000);
 }
 
@@ -232,7 +233,7 @@ export default function LotesMpPage() {
                     const estilos  = ESTADO_STYLE[estado];
                     const dias     = diasHasta(lote.fecha_vencimiento);
                     const fechaFmt = lote.fecha_vencimiento
-                      ? new Date(lote.fecha_vencimiento).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: '2-digit' })
+                      ? new Date(lote.fecha_vencimiento + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: '2-digit' })
                       : null;
 
                     return (

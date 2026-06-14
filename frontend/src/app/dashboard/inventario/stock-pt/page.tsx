@@ -36,7 +36,9 @@ interface StockPtResponse {
 
 function diasDesde(fecha: string): number {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const f   = new Date(fecha); f.setHours(0, 0, 0, 0);
+  // Append T12:00:00 to treat date-only strings as local noon, avoiding UTC timezone shift
+  const f   = new Date(fecha.length === 10 ? fecha + 'T12:00:00' : fecha);
+  f.setHours(0, 0, 0, 0);
   return Math.floor((hoy.getTime() - f.getTime()) / 86_400_000);
 }
 
@@ -224,7 +226,7 @@ export default function StockPtPage() {
                 <tbody className="divide-y divide-slate-50">
                   {filtrados.map(l => {
                     const dias      = diasDesde(l.fecha_produccion);
-                    const fechaFmt  = new Date(l.fecha_produccion).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: '2-digit' });
+                    const fechaFmt  = new Date(l.fecha_produccion + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: '2-digit' });
                     const antigColor = dias > 30 ? 'text-amber-600 bg-amber-50' : dias > 7 ? 'text-slate-600 bg-slate-50' : 'text-green-600 bg-green-50';
 
                     return (

@@ -202,7 +202,7 @@ export default function ProduccionView() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="text-sm text-slate-600">
-                        {new Date(o.fecha_planificada).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                        {new Date(o.fecha_planificada + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">

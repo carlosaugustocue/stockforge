@@ -108,7 +108,7 @@ function MpCard({ mp }: { mp: StockMp }) {
   const hoy         = new Date();
   const prontoVencer = mp.por_bodega.some(b => {
     if (!b.proximo_vencimiento) return false;
-    const diff = (new Date(b.proximo_vencimiento).getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24);
+    const diff = (new Date(b.proximo_vencimiento + 'T12:00:00').getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24);
     return diff <= 60;
   });
 
@@ -180,7 +180,7 @@ function MpCard({ mp }: { mp: StockMp }) {
           </p>
           {mp.por_bodega.map(b => {
             const venceProxmo = b.proximo_vencimiento
-              ? (new Date(b.proximo_vencimiento).getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24) <= 60
+              ? (new Date(b.proximo_vencimiento + 'T12:00:00').getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24) <= 60
               : false;
             return (
               <div key={b.bodega_id} className="flex items-center justify-between">
@@ -244,7 +244,7 @@ export default function StockMpPage() {
     prontoVencer: stock.filter(mp =>
       mp.por_bodega.some(b => {
         if (!b.proximo_vencimiento) return false;
-        const diff = (new Date(b.proximo_vencimiento).getTime() - Date.now()) / 86400000;
+        const diff = (new Date(b.proximo_vencimiento + 'T12:00:00').getTime() - Date.now()) / 86400000;
         return diff <= 60;
       })
     ).length,

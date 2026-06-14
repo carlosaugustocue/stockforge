@@ -103,7 +103,7 @@ export default function StockPtPage() {
                         <span className="ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{l.unidad_medida}</span>
                       </td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {new Date(l.fecha_produccion).toLocaleDateString('es-CO')}
+                        {new Date(l.fecha_produccion + 'T12:00:00').toLocaleDateString('es-CO')}
                       </td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>#{l.orden_produccion_id}</td>
                     </tr>

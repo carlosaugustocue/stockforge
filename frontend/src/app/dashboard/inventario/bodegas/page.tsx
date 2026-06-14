@@ -51,7 +51,9 @@ const TIPO_TABS = [
 function diasHasta(fecha: string | null): number | null {
   if (!fecha) return null;
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const f   = new Date(fecha); f.setHours(0, 0, 0, 0);
+  // Append T12:00:00 to treat date-only strings as local noon, avoiding UTC timezone shift
+  const f   = new Date(fecha.length === 10 ? fecha + 'T12:00:00' : fecha);
+  f.setHours(0, 0, 0, 0);
   return Math.ceil((f.getTime() - hoy.getTime()) / 86_400_000);
 }
 
@@ -59,7 +61,7 @@ function VencimientoBadge({ fecha }: { fecha: string | null }) {
   const dias = diasHasta(fecha);
   if (dias === null) return <span className="text-slate-300 text-sm">—</span>;
 
-  const fmt = new Date(fecha!).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  const fmt = new Date(fecha!.length === 10 ? fecha! + 'T12:00:00' : fecha!).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 
   if (dias < 0)
     return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">Vencido</span>;
@@ -277,8 +279,17 @@ export default function BodegasStockPage() {
                   bodega.items.length === 0 ? (
                     <div className="px-6 py-10 text-center border-t border-slate-50">
                       <Package size={32} className="mx-auto mb-2 text-slate-200" />
-                      <p className="text-sm font-semibold text-slate-400">Sin stock en esta bodega</p>
-                      <p className="text-xs text-slate-300 mt-0.5">No hay materias primas almacenadas aquí actualmente.</p>
+                      <p className="text-sm font-semibold text-slate-400">Sin stock de materias primas</p>
+                      {bodega.tipo === 'ventas' ? (
+                        <p className="text-xs text-slate-400 mt-1">
+                          El stock de <strong>Producto Terminado</strong> en ventas se consulta en{' '}
+                          <a href="/dashboard/inventario/stock-pt" className="underline hover:text-slate-600 transition-colors">
+                            Inventario → Stock PT
+                          </a>.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-300 mt-0.5">No hay materias primas almacenadas aquí actualmente.</p>
+                      )}
                     </div>
                   ) : (
                     <div className="overflow-x-auto border-t border-slate-100">

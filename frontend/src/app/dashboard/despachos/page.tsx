@@ -10,8 +10,8 @@ interface DespachoRaw {
   id: number;
   cantidad: number;
   referencia_cliente?: string;
-  created_at: string;
-  usuario?: { name: string };
+  despachado_en: string;
+  usuario?: { nombre: string };
   lote_pt?: { producto_terminado?: { nombre: string } };
 }
 
@@ -133,9 +133,9 @@ export default function DespachosPage() {
                     <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{formatNum(d.cantidad)}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{d.referencia_cliente ?? '—'}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(d.created_at).toLocaleDateString('es-CO')}
+                      {new Date(d.despachado_en).toLocaleDateString('es-CO')}
                     </td>
-                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{d.usuario?.name ?? '—'}</td>
+                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{d.usuario?.nombre ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

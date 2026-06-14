@@ -66,6 +66,7 @@ class ReportesRepository implements ReportesRepositoryInterface
             ->when($tipo, fn($q) => $q->where('tipo', $tipo))
             ->when($entidadTipo, fn($q) => $q->where('entidad_tipo', $entidadTipo))
             ->latest()
+            ->orderByDesc('id')
             ->get();
     }
 
