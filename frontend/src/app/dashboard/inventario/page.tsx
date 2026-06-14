@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { RefreshCw, Search, AlertTriangle, Package, Warehouse, TrendingDown, CheckCircle2, Clock } from 'lucide-react';
+import { RefreshCw, Search, AlertTriangle, Package, Warehouse, TrendingDown, CheckCircle2, Clock, ShoppingCart, Plus, X } from 'lucide-react';
 import { inventarioService, type StockMp } from '@/services/inventario.service';
+import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
+import { recepcionesService } from '@/services/recepciones.service';
 import { formatCantidad } from '@/lib/utils';
 
 /* ─────────────── Tipos de estado ─────────────── */
@@ -62,6 +64,26 @@ function estadoOf(mp: StockMp): Estado {
 /** Orden de urgencia para mostrar los más críticos primero */
 const URGENCIA: Record<Estado, number> = { agotado: 0, critico: 1, bajo: 2, ok: 3 };
 
+interface PedidoItem {
+  materia_prima_id: number;
+  nombre: string;
+  unidad: string;
+  stock_actual: number;
+  punto_reorden: number;
+  cantidad: string;
+}
+
+function cantidadSugerida(mp: StockMp): number {
+  if (mp.punto_reorden > 0) return Math.max(Math.ceil(mp.punto_reorden * 2 - mp.stock_total), mp.punto_reorden);
+  return mp.stock_total === 0 ? 10 : 5;
+}
+
+function localDateStr(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /* ─────────────── Barra de stock ─────────────── */
 
 function StockBar({ stock, reorden, barCls }: { stock: number; reorden: number; barCls: string }) {
@@ -100,7 +122,7 @@ function StockBar({ stock, reorden, barCls }: { stock: number; reorden: number; 
 
 /* ─────────────── Card de MP ─────────────── */
 
-function MpCard({ mp }: { mp: StockMp }) {
+function MpCard({ mp, onPedir }: { mp: StockMp; onPedir: (mp: StockMp) => void }) {
   const estado  = estadoOf(mp);
   const cfg     = ESTADO_CONFIG[estado];
 
@@ -171,6 +193,17 @@ function MpCard({ mp }: { mp: StockMp }) {
         )}
       </div>
 
+      {/* Botón pedir */}
+      <div className="px-5 pb-3 pt-1">
+        <button
+          onClick={() => onPedir(mp)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+        >
+          <ShoppingCart size={12} />
+          Hacer pedido
+        </button>
+      </div>
+
       {/* Desglose por bodega */}
       {mp.por_bodega.length > 0 && (
         <div className="border-t border-slate-50 px-5 py-3 space-y-2 bg-slate-50/40">
@@ -211,17 +244,28 @@ function MpCard({ mp }: { mp: StockMp }) {
 /* ─────────────── Página principal ─────────────── */
 
 export default function StockMpPage() {
-  const [stock,   setStock]   = useState<StockMp[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [search,  setSearch]  = useState('');
-  const [filtro,  setFiltro]  = useState<Filtro>('todos');
+  const [stock,      setStock]      = useState<StockMp[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [search,     setSearch]     = useState('');
+  const [filtro,     setFiltro]     = useState<Filtro>('todos');
+
+  /* ── estado modal pedido ── */
+  const [modalPedir,     setModalPedir]     = useState(false);
+  const [pedidoItems,    setPedidoItems]    = useState<PedidoItem[]>([]);
+  const [pedidoProvId,   setPedidoProvId]   = useState<number | ''>('');
+  const [pedidoFecha,    setPedidoFecha]    = useState('');
+  const [pedidoObs,      setPedidoObs]      = useState('');
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const [msgPedido,      setMsgPedido]      = useState('');
+  const [addMpId,        setAddMpId]        = useState('');
 
   const cargar = () => {
     setLoading(true);
     setError('');
-    inventarioService.stockMp()
-      .then(setStock)
+    Promise.all([inventarioService.stockMp(), proveedoresService.listar()])
+      .then(([s, p]) => { setStock(s); setProveedores(p); })
       .catch(e => setError(e.message ?? 'Error al cargar el stock'))
       .finally(() => setLoading(false));
   };
@@ -265,6 +309,77 @@ export default function StockMpPage() {
 
   const hayAtencion = kpis.agotados + kpis.criticos + kpis.bajos;
 
+  /* ── handlers pedido ── */
+  const abrirPedir = (mp: StockMp) => {
+    const prov = proveedores.find(p => p.materias_primas.some(m => m.id === mp.materia_prima_id));
+    setPedidoItems([{
+      materia_prima_id: mp.materia_prima_id,
+      nombre:           mp.nombre,
+      unidad:           mp.unidad_medida,
+      stock_actual:     mp.stock_total,
+      punto_reorden:    mp.punto_reorden,
+      cantidad:         String(cantidadSugerida(mp)),
+    }]);
+    setPedidoProvId(prov?.id ?? '');
+    setPedidoFecha(localDateStr(5));
+    setPedidoObs('');
+    setMsgPedido('');
+    setAddMpId('');
+    setModalPedir(true);
+  };
+
+  const abrirPedirNuevo = () => {
+    setPedidoItems([]);
+    setPedidoProvId('');
+    setPedidoFecha(localDateStr(5));
+    setPedidoObs('');
+    setMsgPedido('');
+    setAddMpId('');
+    setModalPedir(true);
+  };
+
+  const agregarMpAlPedido = () => {
+    if (!addMpId) return;
+    const mp = stock.find(s => s.materia_prima_id === parseInt(addMpId));
+    if (!mp || pedidoItems.some(i => i.materia_prima_id === mp.materia_prima_id)) return;
+    setPedidoItems(prev => [...prev, {
+      materia_prima_id: mp.materia_prima_id,
+      nombre:           mp.nombre,
+      unidad:           mp.unidad_medida,
+      stock_actual:     mp.stock_total,
+      punto_reorden:    mp.punto_reorden,
+      cantidad:         String(cantidadSugerida(mp)),
+    }]);
+    setAddMpId('');
+  };
+
+  const handleEnviarPedido = async () => {
+    if (!pedidoProvId || pedidoItems.length === 0) return;
+    setEnviandoPedido(true);
+    setMsgPedido('');
+    try {
+      await recepcionesService.crearOrden({
+        proveedor_id:   pedidoProvId as number,
+        fecha_esperada: pedidoFecha || undefined,
+        observaciones:  pedidoObs   || undefined,
+        items: pedidoItems
+          .map(i => ({ materia_prima_id: i.materia_prima_id, cantidad_solicitada: parseFloat(i.cantidad) || 0 }))
+          .filter(i => i.cantidad_solicitada > 0),
+      });
+      setMsgPedido('ok');
+      setTimeout(() => setModalPedir(false), 1800);
+    } catch (e: unknown) {
+      setMsgPedido((e as Error).message ?? 'Error al crear la orden');
+    } finally {
+      setEnviandoPedido(false);
+    }
+  };
+
+  /* MPs disponibles para agregar (no están ya en el pedido) */
+  const mpDisponiblesParaAgregar = stock.filter(
+    s => !pedidoItems.some(i => i.materia_prima_id === s.materia_prima_id)
+  );
+
   return (
     <div className="space-y-6">
 
@@ -278,11 +393,21 @@ export default function StockMpPage() {
             Stock en tiempo real · {stock.length} MP activas
           </p>
         </div>
-        <button onClick={cargar} disabled={loading}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={abrirPedirNuevo}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-colors"
+            style={{ background: 'var(--primary)' }}
+          >
+            <ShoppingCart size={13} />
+            Nueva orden de compra
+          </button>
+          <button onClick={cargar} disabled={loading}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* ── KPIs ── */}
@@ -421,11 +546,188 @@ export default function StockMpPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {visibles.map(({ mp }) => (
-                <MpCard key={mp.materia_prima_id} mp={mp} />
+                <MpCard key={mp.materia_prima_id} mp={mp} onPedir={abrirPedir} />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {/* ── Modal orden de compra ── */}
+      {modalPedir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+
+            {/* Cabecera */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
+                  <ShoppingCart size={15} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-slate-800">Nueva orden de compra</h2>
+                  <p className="text-xs text-slate-400">Se enviará a Recepciones para seguimiento</p>
+                </div>
+              </div>
+              <button onClick={() => setModalPedir(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Cuerpo */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+
+              {/* Proveedor */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                  Proveedor <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={pedidoProvId}
+                  onChange={e => setPedidoProvId(e.target.value ? parseInt(e.target.value) : '')}
+                  className="w-full px-3 py-2.5 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)] bg-white"
+                >
+                  <option value="">— Seleccionar proveedor —</option>
+                  {proveedores.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fecha esperada */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                  Fecha esperada de entrega
+                </label>
+                <input
+                  type="date"
+                  value={pedidoFecha}
+                  onChange={e => setPedidoFecha(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)]"
+                />
+              </div>
+
+              {/* Items */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">
+                  Materias primas a pedir <span className="text-red-500">*</span>
+                </label>
+
+                {pedidoItems.length === 0 && (
+                  <p className="text-xs text-slate-400 py-3 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                    Agrega al menos una materia prima
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  {pedidoItems.map((item, idx) => (
+                    <div key={item.materia_prima_id} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{item.nombre}</p>
+                        <p className="text-[11px] text-slate-400">
+                          Stock: {formatCantidad(item.stock_actual, item.unidad)}
+                          {item.punto_reorden > 0 && <> · Mínimo: {formatCantidad(item.punto_reorden, item.unidad)}</>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <input
+                          type="number"
+                          min="0.001"
+                          step="0.001"
+                          value={item.cantidad}
+                          onChange={e => {
+                            const next = [...pedidoItems];
+                            next[idx] = { ...next[idx], cantidad: e.target.value };
+                            setPedidoItems(next);
+                          }}
+                          className="w-20 px-2 py-1.5 text-sm text-right border-2 border-black/10 rounded-lg focus:outline-none focus:border-[var(--primary)]"
+                        />
+                        <span className="text-xs text-slate-400 w-8">{item.unidad}</span>
+                        <button
+                          onClick={() => setPedidoItems(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Agregar MP */}
+                {mpDisponiblesParaAgregar.length > 0 && (
+                  <div className="flex gap-2 mt-2">
+                    <select
+                      value={addMpId}
+                      onChange={e => setAddMpId(e.target.value)}
+                      className="flex-1 px-3 py-2 text-sm border-2 border-dashed border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)] bg-white text-slate-500"
+                    >
+                      <option value="">+ Agregar otra materia prima…</option>
+                      {mpDisponiblesParaAgregar.map(mp => (
+                        <option key={mp.materia_prima_id} value={mp.materia_prima_id}>
+                          {mp.nombre} (stock: {formatCantidad(mp.stock_total, mp.unidad_medida)})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={agregarMpAlPedido}
+                      disabled={!addMpId}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 transition-colors"
+                      style={{ background: 'var(--primary)' }}
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Observaciones */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                  Observaciones
+                </label>
+                <textarea
+                  rows={2}
+                  value={pedidoObs}
+                  onChange={e => setPedidoObs(e.target.value)}
+                  placeholder="Notas adicionales para el proveedor…"
+                  className="w-full px-3 py-2 text-sm border-2 border-black/10 rounded-xl focus:outline-none focus:border-[var(--primary)] resize-none"
+                />
+              </div>
+
+              {/* Feedback */}
+              {msgPedido && msgPedido !== 'ok' && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                  {msgPedido}
+                </div>
+              )}
+              {msgPedido === 'ok' && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 font-semibold">
+                  ✓ Orden creada correctamente. Ve a Recepciones para seguirla.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 flex-shrink-0">
+              <button
+                onClick={() => setModalPedir(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEnviarPedido}
+                disabled={enviandoPedido || !pedidoProvId || pedidoItems.length === 0 || msgPedido === 'ok'}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-black text-white disabled:opacity-40 transition-colors"
+                style={{ background: 'var(--primary)' }}
+              >
+                {enviandoPedido ? <RefreshCw size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
+                Crear orden
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
