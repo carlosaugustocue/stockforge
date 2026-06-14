@@ -42,8 +42,6 @@ class InventarioRepository implements InventarioRepositoryInterface
 
     public function materiasprimasBajoReorden(): Collection
     {
-        // Carga todas las MP activas con sus lotes para evaluar stock total en PHP
-        // (evita subconsulta con encrypted cast en punto_reorden — decimal comparado en app)
         return MateriaPrima::query()
             ->where('activa', true)
             ->with([
@@ -74,5 +72,16 @@ class InventarioRepository implements InventarioRepositoryInterface
             ->orderBy('fecha_vencimiento')
             ->orderBy('fecha_ingreso')
             ->get();
+    }
+
+    public function loteFefoEnBodega(int $mpId, int $bodegaId): ?LoteMateriaPrima
+    {
+        return LoteMateriaPrima::with(['bodega', 'materiaPrima'])
+            ->where('materia_prima_id', $mpId)
+            ->where('bodega_id', $bodegaId)
+            ->where('cantidad_actual', '>', 0)
+            ->orderByRaw('fecha_vencimiento IS NULL, fecha_vencimiento ASC')
+            ->orderBy('fecha_ingreso')
+            ->first();
     }
 }

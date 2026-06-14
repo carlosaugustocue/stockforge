@@ -20,7 +20,8 @@ class TrasladoMpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lote_id'          => ['required', 'integer', 'exists:lotes_materia_prima,id'],
+            'materia_prima_id' => ['required', 'integer', 'exists:materias_primas,id'],
+            'bodega_origen_id' => ['required', 'integer', 'exists:bodegas,id'],
             'bodega_destino_id'=> ['required', 'integer', 'exists:bodegas,id'],
             'cantidad'         => ['required', 'numeric', 'gt:0'],
         ];
@@ -29,8 +30,10 @@ class TrasladoMpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'lote_id.required'           => 'El lote de materia prima es obligatorio.',
-            'lote_id.exists'             => 'El lote de materia prima no existe.',
+            'materia_prima_id.required'  => 'La materia prima es obligatoria.',
+            'materia_prima_id.exists'    => 'La materia prima no existe.',
+            'bodega_origen_id.required'  => 'La bodega de origen es obligatoria.',
+            'bodega_origen_id.exists'    => 'La bodega de origen no existe.',
             'bodega_destino_id.required' => 'La bodega destino es obligatoria.',
             'bodega_destino_id.exists'   => 'La bodega destino no existe.',
             'cantidad.required'          => 'La cantidad a trasladar es obligatoria.',

@@ -132,7 +132,8 @@ class InventarioController extends Controller
         try {
             $data = $request->validated();
             $resultado = $this->service->trasladar(
-                $data['lote_id'],
+                $data['materia_prima_id'],
+                $data['bodega_origen_id'],
                 $data['bodega_destino_id'],
                 (float) $data['cantidad'],
                 $request->user()->id,

@@ -281,7 +281,8 @@ test('flujo_traslado_mp_redistribuye_stock_entre_bodegas', function () {
 
     $rTraslado = $this->withToken($token)
         ->postJson('/api/v1/inventario/traslados', [
-            'lote_id'           => $loteOrigen->id,
+            'materia_prima_id' => $loteOrigen->materia_prima_id,
+            'bodega_origen_id'  => $loteOrigen->bodega_id,
             'bodega_destino_id' => $bodegaProduccion->id,
             'cantidad'          => 30,
         ])->assertStatus(201);

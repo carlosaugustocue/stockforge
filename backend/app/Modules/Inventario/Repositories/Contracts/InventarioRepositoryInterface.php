@@ -26,4 +26,7 @@ interface InventarioRepositoryInterface
 
     /** Todos los lotes activos de MP (cantidad_actual > 0) ordenados FEFO. */
     public function lotesActivosMp(): Collection;
+
+    /** Lote más próximo a vencer (FEFO) de una MP en una bodega específica. */
+    public function loteFefoEnBodega(int $mpId, int $bodegaId): ?LoteMateriaPrima;
 }
