@@ -30,7 +30,7 @@ return [
     // cubre todas las URLs preview: stockforge-{hash}-{sufijo}
     'allowed_origins_patterns' => array_filter([
         env('CORS_VERCEL_SUFFIX')
-            ? '#^https://[a-z0-9-]+\.' . preg_quote(env('CORS_VERCEL_SUFFIX'), '#') . '$#'
+            ? '#^https://[a-z0-9-]+-' . preg_quote(env('CORS_VERCEL_SUFFIX'), '#') . '$#'
             : null,
     ]),
 
