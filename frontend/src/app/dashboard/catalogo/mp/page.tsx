@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Plus, Pencil, Trash2, X, Search, Package } from 'lucide-react';
 import { catalogoService, type MateriaPrima } from '@/services/catalogo.service';
+import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { formatCantidad, unidadAdmiteDecimales } from '@/lib/utils';
 
 type Modal = 'crear' | 'editar' | null;
 
 export default function MateriasPrimasPage() {
-  const [items,        setItems]    = useState<MateriaPrima[]>([]);
-  const [unidades,     setUnidades] = useState<{ id: number; nombre: string }[]>([]);
+  const [items,        setItems]       = useState<MateriaPrima[]>([]);
+  const [unidades,     setUnidades]    = useState<{ id: number; nombre: string }[]>([]);
+  const [proveedores,  setProveedores] = useState<Proveedor[]>([]);
   const [loading,      setLoading]  = useState(true);
   const [search,       setSearch]   = useState('');
   const [modal,        setModal]    = useState<Modal>(null);
@@ -27,11 +29,22 @@ export default function MateriasPrimasPage() {
     Promise.allSettled([
       catalogoService.materiasPrimas(),
       catalogoService.unidadesMedida(),
-    ]).then(([m, u]) => {
+      proveedoresService.listar(),
+    ]).then(([m, u, p]) => {
       if (m.status === 'fulfilled') setItems(m.value);
       if (u.status === 'fulfilled') setUnidades(u.value);
+      if (p.status === 'fulfilled') setProveedores(p.value);
     }).finally(() => setLoading(false));
   };
+
+  // Mapa mp_id → proveedores que la suministran
+  const provPorMp = proveedores.reduce((acc, prov) => {
+    prov.materias_primas.forEach(mp => {
+      if (!acc[mp.id]) acc[mp.id] = [];
+      acc[mp.id].push(prov.nombre);
+    });
+    return acc;
+  }, {} as Record<number, string[]>);
 
   useEffect(() => { cargar(); }, []);
 
@@ -190,7 +203,7 @@ export default function MateriasPrimasPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
-                {['#', 'Nombre', 'Unidad', 'Punto de reorden', 'Estado', 'Acciones'].map(h => (
+                {['#', 'Nombre', 'Unidad', 'Punto de reorden', 'Proveedores', 'Estado', 'Acciones'].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     {h}
                   </th>
@@ -233,6 +246,22 @@ export default function MateriasPrimasPage() {
                     <span className="text-slate-700 font-semibold">
                       {formatCantidad(mp.punto_reorden, mp.unidad_medida?.nombre)}
                     </span>
+                  </td>
+
+                  {/* Proveedores */}
+                  <td className="px-5 py-3.5">
+                    {(provPorMp[mp.id] ?? []).length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {provPorMp[mp.id].map(nombre => (
+                          <span key={nombre}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-semibold border border-blue-100">
+                            {nombre}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-300 italic">Sin proveedor</span>
+                    )}
                   </td>
 
                   {/* Estado */}
