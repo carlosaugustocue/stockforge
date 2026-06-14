@@ -5,13 +5,23 @@ import {
   RefreshCw, Plus, Play, Truck, X, AlertTriangle,
   ClipboardList, ChefHat, CheckCircle2, Package, Search,
 } from 'lucide-react';
+import Link from 'next/link';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
 import { catalogoService, type ProductoTerminado, type RelacionMpPt } from '@/services/catalogo.service';
 import { formatCantidad, parseApiError, unidadAdmiteDecimales } from '@/lib/utils';
+import { ApiError } from '@/lib/api-client';
 
 /* ─────────────── Tipos ─────────────── */
 
 type Modal = 'crear' | 'requerimientos' | 'ejecutar' | 'traslado' | 'anular' | null;
+
+interface StockErrorData {
+  materia_prima: string;
+  unidad_medida: string;
+  requerida: number;
+  disponible: number;
+  faltante: number;
+}
 
 /* ─────────────── Constantes de estilo ─────────────── */
 
@@ -215,6 +225,7 @@ export default function ProduccionPage() {
   const [enviando,      setEnviando]      = useState(false);
   const [msgOk,         setMsgOk]         = useState('');
   const [msgErr,        setMsgErr]        = useState('');
+  const [stockErr,      setStockErr]      = useState<StockErrorData | null>(null);
   const [mostrarAnuladas, setMostrarAnuladas] = useState(false);
 
   // Form crear
@@ -261,7 +272,7 @@ export default function ProduccionPage() {
     setPtId(''); setCantidad('');
     const now = new Date();
     setFecha(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
-    setMsgErr('');
+    setMsgErr(''); setStockErr(null);
     setRelacionesPt([]);
     setBusquedaPt('');
     setModal('crear');
@@ -281,7 +292,14 @@ export default function ProduccionPage() {
       setModal('requerimientos');
       cargar();
     } catch (err: unknown) {
-      setMsgErr(parseApiError((err as Error).message ?? 'Error al crear la orden'));
+      const detail = err instanceof ApiError
+        ? (err.data as { errors?: StockErrorData } | undefined)?.errors
+        : undefined;
+      if (detail?.materia_prima) {
+        setStockErr(detail);
+      } else {
+        setMsgErr(parseApiError((err as Error).message ?? 'Error al crear la orden'));
+      }
     } finally {
       setEnviando(false);
     }
@@ -307,7 +325,14 @@ export default function ProduccionPage() {
       setMsgOk(`Producción ejecutada — Orden #${selected!.id} · PT creado en Planta de Producción.`);
       setModal(null); cargar();
     } catch (err: unknown) {
-      setMsgErr(parseApiError((err as Error).message ?? 'Error al ejecutar la producción'));
+      const detail = err instanceof ApiError
+        ? (err.data as { errors?: StockErrorData } | undefined)?.errors
+        : undefined;
+      if (detail?.materia_prima) {
+        setStockErr(detail);
+      } else {
+        setMsgErr(parseApiError((err as Error).message ?? 'Error al ejecutar la producción'));
+      }
     } finally {
       setEnviando(false);
     }
@@ -348,7 +373,7 @@ export default function ProduccionPage() {
   const cardProps = (o: OrdenProduccion) => ({
     orden:       o,
     onVerReqs:   handleVerReqs,
-    onEjecutar:  (ord: OrdenProduccion) => { setSelected(ord); setCantProd(String(Number(ord.cantidad_planificada))); setMsgErr(''); setModal('ejecutar'); },
+    onEjecutar:  (ord: OrdenProduccion) => { setSelected(ord); setCantProd(String(Number(ord.cantidad_planificada))); setMsgErr(''); setStockErr(null); setModal('ejecutar'); },
     onTrasladar: (ord: OrdenProduccion) => { setSelected(ord); setMsgErr(''); setModal('traslado'); },
     onAnular:    (ord: OrdenProduccion) => { setSelected(ord); setMsgErr(''); setModal('anular'); },
   });
@@ -577,6 +602,7 @@ export default function ProduccionPage() {
                       </button>
                     </div>
 
+                    {stockErr && <StockErrorBox err={stockErr} />}
                     {msgErr && <ErrBox msg={msgErr} />}
 
                     <form onSubmit={handleCrear} className="space-y-4">
@@ -743,7 +769,7 @@ export default function ProduccionPage() {
             <button onClick={() => {
               setSelected(ordenCreada);
               setCantProd(String(Number(ordenCreada.cantidad_planificada)));
-              setMsgErr('');
+              setMsgErr(''); setStockErr(null);
               setModal('ejecutar');
             }}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all"
@@ -774,6 +800,7 @@ export default function ProduccionPage() {
             </div>
           </div>
 
+          {stockErr && <StockErrorBox err={stockErr} />}
           {msgErr && <ErrBox msg={msgErr} />}
 
           <form onSubmit={handleEjecutar} className="space-y-4">
@@ -925,6 +952,44 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+function StockErrorBox({ err }: { err: StockErrorData }) {
+  return (
+    <div className="rounded-xl bg-red-50 border border-red-200 overflow-hidden mb-4">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-red-100 border-b border-red-200">
+        <AlertTriangle size={13} className="text-red-600 flex-shrink-0" />
+        <p className="text-xs font-bold text-red-800 uppercase tracking-wide">Stock insuficiente — no se puede crear la orden</p>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        <p className="text-sm text-red-700">
+          No hay suficiente <strong>{err.materia_prima}</strong> en Bodega Principal para esta producción.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { label: 'Requerido',  val: err.requerida,  cls: 'text-slate-700' },
+            { label: 'Disponible', val: err.disponible, cls: 'text-amber-600'  },
+            { label: 'Faltante',   val: err.faltante,   cls: 'text-red-700'   },
+          ] as { label: string; val: number; cls: string }[]).map(({ label, val, cls }) => (
+            <div key={label} className="text-center px-2 py-2 rounded-lg bg-white border border-red-100">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
+              <p className={`text-sm font-black tabular-nums ${cls}`}>{formatCantidad(val, err.unidad_medida)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-100">
+          <span className="text-amber-500 text-xs mt-0.5 flex-shrink-0">💡</span>
+          <p className="text-xs text-amber-800">
+            <strong>Solución:</strong> Recibe más <strong>{err.materia_prima}</strong> en{' '}
+            <Link href="/dashboard/recepciones" className="underline font-semibold hover:text-amber-900">
+              Recepciones → Nueva orden de compra
+            </Link>
+            , o reduce la cantidad a producir.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
