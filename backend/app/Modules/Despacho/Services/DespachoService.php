@@ -96,6 +96,7 @@ class DespachoService
             $despacho = $this->repo->crear([
                 'lote_pt_id'         => $lotePt->id,
                 'user_id'            => $userId,
+                'cliente_id'         => $data['cliente_id'] ?? null,
                 'cantidad'           => $cantidad,
                 'referencia_cliente' => $data['referencia_cliente'] ?? null,
                 'movimiento_id'      => $movimiento->id,

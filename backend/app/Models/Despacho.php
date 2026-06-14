@@ -27,6 +27,7 @@ class Despacho extends Model
     protected $fillable = [
         'lote_pt_id',
         'user_id',
+        'cliente_id',
         'cantidad',
         'referencia_cliente',
         'movimiento_id',
@@ -47,6 +48,11 @@ class Despacho extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 
     public function movimiento(): BelongsTo
