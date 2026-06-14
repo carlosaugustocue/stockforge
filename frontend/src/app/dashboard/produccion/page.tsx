@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   RefreshCw, Plus, Play, Truck, X, AlertTriangle,
-  ClipboardList, ChefHat, CheckCircle2, Package,
+  ClipboardList, ChefHat, CheckCircle2, Package, Search,
 } from 'lucide-react';
 import { produccionService, type OrdenProduccion, type RequerimientoMaterial } from '@/services/produccion.service';
-import { catalogoService, type ProductoTerminado } from '@/services/catalogo.service';
+import { catalogoService, type ProductoTerminado, type RelacionMpPt } from '@/services/catalogo.service';
 import { formatNum } from '@/lib/utils';
 
 /* ─────────────── Tipos ─────────────── */
@@ -218,9 +218,12 @@ export default function ProduccionPage() {
   const [mostrarAnuladas, setMostrarAnuladas] = useState(false);
 
   // Form crear
-  const [ptId,      setPtId]     = useState('');
-  const [cantidad,  setCantidad] = useState('');
-  const [fecha,     setFecha]    = useState('');
+  const [ptId,         setPtId]        = useState('');
+  const [cantidad,     setCantidad]    = useState('');
+  const [fecha,        setFecha]       = useState('');
+  const [busquedaPt,   setBusquedaPt]  = useState('');
+  const [relacionesPt, setRelacionesPt] = useState<RelacionMpPt[]>([]);
+  const [loadingRels,  setLoadingRels]  = useState(false);
 
   // Requerimientos
   const [reqs,        setReqs]        = useState<RequerimientoMaterial[]>([]);
@@ -242,12 +245,24 @@ export default function ProduccionPage() {
 
   useEffect(() => { cargar(); }, []);
 
+  // Preview de ingredientes al seleccionar producto
+  useEffect(() => {
+    if (!ptId) { setRelacionesPt([]); return; }
+    setLoadingRels(true);
+    catalogoService.relacionesMpPt(parseInt(ptId))
+      .then(setRelacionesPt)
+      .catch(() => setRelacionesPt([]))
+      .finally(() => setLoadingRels(false));
+  }, [ptId]);
+
   /* ── Handlers ── */
 
   const abrirCrear = () => {
     setPtId(''); setCantidad('');
     setFecha(new Date().toISOString().split('T')[0]);
     setMsgErr('');
+    setRelacionesPt([]);
+    setBusquedaPt('');
     setModal('crear');
   };
 
@@ -470,45 +485,222 @@ export default function ProduccionPage() {
         </div>
       )}
 
-      {/* ── Modal: Crear orden ── */}
+      {/* ── Modal: Crear orden — Panel dos columnas ── */}
       {modal === 'crear' && (
-        <ModalShell
-          title="Nueva Orden de Producción"
-          subtitle="Paso 1 de 4 — Planificar"
-          onClose={() => setModal(null)}>
-          {msgErr && <ErrBox msg={msgErr} />}
-          <form onSubmit={handleCrear} className="space-y-4">
-            <Field label="Producto terminado">
-              <select value={ptId} onChange={e => setPtId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                required>
-                <option value="">— Seleccionar producto —</option>
-                {productos.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Cantidad a producir">
-              <input type="number" step="0.001" min="0.001" value={cantidad}
-                onChange={e => setCantidad(e.target.value)}
-                placeholder="0"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                required />
-            </Field>
-            <Field label="Fecha planificada">
-              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
-                required />
-            </Field>
-            <p className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3">
-              Al crear la orden, el sistema calculará automáticamente las materias primas requeridas según la fórmula del producto.
-            </p>
-            <ModalActions onCancel={() => setModal(null)} loading={enviando} label="Crear y ver ingredientes" />
-          </form>
-        </ModalShell>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-100 overflow-hidden flex flex-col"
+            style={{ maxHeight: '90vh' }}>
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Nueva Orden de Producción</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Paso 1 de 4 — Planificar</p>
+              </div>
+              <button onClick={() => setModal(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <X size={15} className="text-slate-400" />
+              </button>
+            </div>
+
+            {/* Body: dos paneles */}
+            <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+
+              {/* Panel izquierdo — Selector de producto */}
+              <div className="w-60 flex-shrink-0 flex flex-col border-r border-slate-100 overflow-hidden">
+                <div className="px-4 pt-4 pb-3 flex-shrink-0">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                    Producto
+                  </p>
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={busquedaPt}
+                      onChange={e => setBusquedaPt(e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-200 text-xs bg-slate-50 focus:outline-none focus:bg-white focus:border-slate-300 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 px-2 pb-4 space-y-0.5">
+                  {productos
+                    .filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase()))
+                    .map(p => {
+                      const activo = ptId === String(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPtId(String(p.id))}
+                          className={`w-full text-left px-3 py-2.5 rounded-xl transition-all ${
+                            activo
+                              ? 'text-white shadow-sm'
+                              : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                          style={activo ? { background: 'var(--primary)' } : undefined}>
+                          <div className="text-sm font-medium truncate leading-tight">{p.nombre}</div>
+                          {p.unidad_medida && (
+                            <div className={`text-[10px] mt-0.5 ${activo ? 'text-white/65' : 'text-slate-400'}`}>
+                              {p.unidad_medida.nombre}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  {productos.filter(p => p.activo && p.nombre.toLowerCase().includes(busquedaPt.toLowerCase())).length === 0 && (
+                    <p className="text-xs text-slate-400 text-center py-6">Sin resultados</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Panel derecho — Formulario + preview */}
+              <div className="flex-1 overflow-y-auto">
+                {!ptId ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 gap-3 py-12 px-8">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center">
+                      <ChefHat size={26} className="text-slate-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-500">Elige un producto</p>
+                      <p className="text-xs mt-1 text-slate-400">
+                        Selecciona el producto en el panel izquierdo para configurar la orden
+                      </p>
+                    </div>
+                  </div>
+                ) : (() => {
+                  const pt       = productos.find(p => String(p.id) === ptId);
+                  const cantNum  = parseFloat(cantidad) || 0;
+                  const unidad   = pt?.unidad_medida?.nombre ?? '';
+
+                  return (
+                    <div className="p-6 space-y-5">
+
+                      {/* Producto seleccionado */}
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(139,35,35,0.1)' }}>
+                          <ChefHat size={18} style={{ color: 'var(--primary)' }} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800 text-sm">{pt?.nombre}</p>
+                          {pt?.unidad_medida && (
+                            <p className="text-xs text-slate-400 mt-0.5">Unidad: {pt.unidad_medida.nombre}</p>
+                          )}
+                        </div>
+                        <button type="button" onClick={() => setPtId('')}
+                          className="ml-auto p-1 rounded-md hover:bg-slate-200 transition-colors">
+                          <X size={13} className="text-slate-400" />
+                        </button>
+                      </div>
+
+                      {msgErr && <ErrBox msg={msgErr} />}
+
+                      <form onSubmit={handleCrear} className="space-y-4">
+
+                        {/* Cantidad + fecha */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                              Cantidad a producir
+                            </label>
+                            <div className="flex rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2"
+                              style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}>
+                              <input
+                                type="number" step="0.001" min="0.001"
+                                value={cantidad} onChange={e => setCantidad(e.target.value)}
+                                placeholder="0"
+                                className="flex-1 px-3 py-2.5 text-sm focus:outline-none bg-white min-w-0"
+                                required />
+                              {unidad && (
+                                <span className="px-3 py-2.5 text-xs text-slate-500 font-medium bg-slate-50 border-l border-slate-200 flex items-center flex-shrink-0">
+                                  {unidad}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                              Fecha planificada
+                            </label>
+                            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+                              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-white"
+                              style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                              required />
+                          </div>
+                        </div>
+
+                        {/* Preview de ingredientes */}
+                        <div className="rounded-xl border border-slate-100 overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Ingredientes requeridos
+                            </p>
+                            {cantNum > 0 && (
+                              <span className="text-xs text-slate-400">
+                                para <strong className="text-slate-600">{cantNum}</strong> {unidad}
+                              </span>
+                            )}
+                          </div>
+                          {loadingRels ? (
+                            <div className="py-6 flex justify-center">
+                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-t-transparent"
+                                style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
+                            </div>
+                          ) : relacionesPt.length === 0 ? (
+                            <div className="py-6 text-center">
+                              <p className="text-xs text-slate-400">Sin ingredientes configurados para este producto</p>
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-slate-50 max-h-44 overflow-y-auto">
+                              {relacionesPt.map(r => {
+                                const total = cantNum > 0 ? r.cantidad_requerida * cantNum : null;
+                                return (
+                                  <div key={r.materia_prima_id}
+                                    className="flex items-center justify-between px-4 py-2.5">
+                                    <span className="text-xs font-medium text-slate-600 truncate flex-1 mr-3">
+                                      {r.materia_prima_nombre}
+                                    </span>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      {total != null ? (
+                                        <span className="text-xs font-semibold tabular-nums"
+                                          style={{ color: 'var(--primary)' }}>
+                                          {formatNum(total)}
+                                          {r.unidad_medida?.nombre ? ` ${r.unidad_medida.nombre}` : ''}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-slate-400 tabular-nums">
+                                          × {formatNum(r.cantidad_requerida)} {r.unidad_medida?.nombre ?? ''}/ud
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Acciones */}
+                        <div className="flex gap-2 pt-1">
+                          <button type="button" onClick={() => setModal(null)}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+                            Cancelar
+                          </button>
+                          <button type="submit" disabled={enviando || !ptId || !cantidad || !fecha}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-all"
+                            style={{ background: 'var(--primary)' }}>
+                            {enviando ? 'Creando…' : 'Crear orden'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Modal: Ingredientes requeridos ── */}
