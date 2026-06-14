@@ -25,10 +25,14 @@ return [
         env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
     ))),
 
-    // Patrones regex para orígenes — cubre deploys de preview de Vercel
-    'allowed_origins_patterns' => array_filter(array_map('trim', explode(',',
-        env('CORS_ALLOWED_ORIGINS_PATTERNS', '')
-    ))),
+    // Patrón automático para Vercel — set CORS_VERCEL_SUFFIX al sufijo estable
+    // ej: CORS_VERCEL_SUFFIX=carlos-augustos-projects-89120cac.vercel.app
+    // cubre todas las URLs preview: stockforge-{hash}-{sufijo}
+    'allowed_origins_patterns' => array_filter([
+        env('CORS_VERCEL_SUFFIX')
+            ? '#^https://[a-z0-9-]+\.' . preg_quote(env('CORS_VERCEL_SUFFIX'), '#') . '$#'
+            : null,
+    ]),
 
     // Headers que el cliente puede enviar
     'allowed_headers' => ['*'],
