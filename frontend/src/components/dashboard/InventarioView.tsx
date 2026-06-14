@@ -1,23 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Scale, AlertTriangle, ArrowLeftRight, PackageCheck,
-  Flame, Truck, ChevronRight,
+  Flame, Layers, Warehouse, Clock, ChevronRight, TrendingDown,
 } from 'lucide-react';
 import { obtenerSesion } from '@/lib/session';
 import { inventarioService, type StockMp, type AlertaMp } from '@/services/inventario.service';
 import { produccionService, type OrdenProduccion } from '@/services/produccion.service';
-
-const MODULOS = [
-  { nombre: 'Stock de MP',        desc: 'Consulta niveles por bodega',              Icono: Scale,         href: '/dashboard/inventario'           },
-  { nombre: 'Alertas de stock',   desc: 'Materias primas bajo punto de reorden',    Icono: AlertTriangle, href: '/dashboard/inventario/alertas'   },
-  { nombre: 'Traslados',          desc: 'Mover materia prima entre bodegas',        Icono: ArrowLeftRight,href: '/dashboard/inventario/traslados' },
-  { nombre: 'Órdenes de compra',  desc: 'Pedidos y recepción de materias primas',   Icono: PackageCheck,  href: '/dashboard/recepciones'          },
-  { nombre: 'Producción',         desc: 'Gestión del ciclo productivo completo',    Icono: Flame,         href: '/dashboard/produccion'           },
-  { nombre: 'Despachos',          desc: 'Salida de productos terminados',           Icono: Truck,         href: '/dashboard/despachos'            },
-];
+import { formatCantidad } from '@/lib/utils';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -27,9 +19,23 @@ function getGreeting() {
 }
 
 function getDateStr() {
-  return new Date().toLocaleDateString('es-CO', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  });
+  return new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function diasHasta(fecha: string | null): number | null {
+  if (!fecha) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const f   = new Date(fecha); f.setHours(0, 0, 0, 0);
+  return Math.ceil((f.getTime() - hoy.getTime()) / 86_400_000);
+}
+
+interface ItemVencimiento {
+  nombre: string;
+  unidad: string;
+  bodega: string;
+  stock: number;
+  fecha: string;
+  dias: number;
 }
 
 export default function InventarioView() {
@@ -53,39 +59,36 @@ export default function InventarioView() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const activas     = ordenes.filter(o => o.estado === 'pendiente' || o.estado === 'producido').length;
-  const completadas = ordenes.filter(o => o.estado === 'completada').length;
-  const hayAlertas  = alertas.length > 0;
+  const ordenesActivas = ordenes.filter(o => o.estado === 'pendiente' || o.estado === 'producido').length;
 
-  const tarjetas = [
-    {
-      titulo: 'Materias primas',
-      valor:  loading ? '—' : stock.length.toString(),
-      Icono:  Scale,
-      color:  'text-blue-600',
-      bg:     'bg-blue-50',
-    },
-    {
-      titulo: 'Alertas de reorden',
-      valor:  loading ? '—' : alertas.length.toString(),
-      Icono:  AlertTriangle,
-      color:  hayAlertas ? 'text-red-500' : 'text-slate-400',
-      bg:     hayAlertas ? 'bg-red-50' : 'bg-slate-50',
-    },
-    {
-      titulo: 'Órdenes activas',
-      valor:  loading ? '—' : activas.toString(),
-      Icono:  Flame,
-      color:  'text-orange-500',
-      bg:     'bg-orange-50',
-    },
-    {
-      titulo: 'Órdenes completadas',
-      valor:  loading ? '—' : completadas.toString(),
-      Icono:  PackageCheck,
-      color:  'text-green-600',
-      bg:     'bg-green-50',
-    },
+  /* lotes con vencimiento en ≤ 7 días derivados del stockMp */
+  const vencenProximo = useMemo<ItemVencimiento[]>(() => {
+    return stock.flatMap(mp =>
+      mp.por_bodega
+        .filter(b => { const d = diasHasta(b.proximo_vencimiento); return d !== null && d >= 0 && d <= 7; })
+        .map(b => ({
+          nombre: mp.nombre,
+          unidad: mp.unidad_medida,
+          bodega: b.bodega,
+          stock:  b.stock,
+          fecha:  b.proximo_vencimiento!,
+          dias:   diasHasta(b.proximo_vencimiento)!,
+        }))
+    ).sort((a, b) => a.dias - b.dias);
+  }, [stock]);
+
+  /* alertas ordenadas por faltante desc (las más críticas primero) */
+  const alertasOrdenadas = useMemo(() =>
+    [...alertas].sort((a, b) => b.faltante - a.faltante).slice(0, 5),
+    [alertas]);
+
+  const ACCIONES = [
+    { label: 'Ver alertas',       href: '/dashboard/inventario/alertas',   Icon: AlertTriangle, bg: 'bg-red-50',    color: 'text-red-500'    },
+    { label: 'Registrar traslado',href: '/dashboard/inventario/traslados', Icon: ArrowLeftRight,bg: 'bg-blue-50',   color: 'text-blue-500'   },
+    { label: 'Órdenes de compra', href: '/dashboard/recepciones',          Icon: PackageCheck,  bg: 'bg-green-50',  color: 'text-green-600'  },
+    { label: 'Vista bodegas',     href: '/dashboard/inventario/bodegas',   Icon: Warehouse,     bg: 'bg-purple-50', color: 'text-purple-600' },
+    { label: 'Ver lotes',         href: '/dashboard/inventario/lotes',     Icon: Layers,        bg: 'bg-amber-50',  color: 'text-amber-600'  },
+    { label: 'Stock MP',          href: '/dashboard/inventario',           Icon: Scale,         bg: 'bg-slate-100', color: 'text-slate-600'  },
   ];
 
   return (
@@ -99,77 +102,163 @@ export default function InventarioView() {
           </div>
           <div>
             <p className="text-white/70 text-sm">
-              {getGreeting()},{' '}
-              <span className="text-white font-semibold">{firstName}</span>
+              {getGreeting()}, <span className="text-white font-semibold">{firstName}</span>
             </p>
             <h1 className="text-xl font-bold text-white leading-tight">Panel de Inventarios</h1>
+            <p className="text-white/50 text-xs mt-0.5 capitalize">{getDateStr()}</p>
           </div>
         </div>
-        <div className="hidden sm:flex flex-col items-end gap-1.5">
-          <span className="text-xs text-white/60 capitalize">{getDateStr()}</span>
-          <span className="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-medium text-white border border-white/10">
-            Encargado de Inventarios
-          </span>
-        </div>
+        <span className="hidden sm:inline-flex px-3 py-1.5 rounded-lg bg-white/15 text-xs font-medium text-white border border-white/10">
+          Encargado de Inventarios
+        </span>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {tarjetas.map(({ titulo, valor, Icono, color, bg }) => (
-          <div key={titulo} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${bg}`}>
-              <Icono size={16} className={color} />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          { titulo: 'Materias primas',    valor: loading ? '—' : stock.length,         Icon: Scale,         color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { titulo: 'Alertas reorden',    valor: loading ? '—' : alertas.length,       Icon: AlertTriangle, color: alertas.length > 0 ? 'text-red-500' : 'text-slate-400', bg: alertas.length > 0 ? 'bg-red-50' : 'bg-slate-50' },
+          { titulo: 'Vencen ≤ 7 días',   valor: loading ? '—' : vencenProximo.length, Icon: Clock,         color: vencenProximo.length > 0 ? 'text-amber-600' : 'text-slate-400', bg: vencenProximo.length > 0 ? 'bg-amber-50' : 'bg-slate-50' },
+          { titulo: 'Órdenes activas',    valor: loading ? '—' : ordenesActivas,       Icon: Flame,         color: 'text-orange-500', bg: 'bg-orange-50' },
+        ].map(({ titulo, valor, Icon, color, bg }) => (
+          <div key={titulo} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${bg}`}>
+              <Icon size={17} className={color} />
             </div>
-            <div className="text-2xl font-bold text-slate-800 tabular-nums">{valor}</div>
-            <div className="text-xs font-medium text-slate-400 mt-1">{titulo}</div>
+            <div className="text-2xl font-black tabular-nums" style={{ color: 'var(--text-main)' }}>{valor}</div>
+            <div className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>{titulo}</div>
           </div>
         ))}
       </div>
 
-      {/* Alerta strip */}
-      {hayAlertas && (
-        <div className="bg-red-50 border border-red-100 rounded-xl px-5 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
-            <p className="text-sm font-medium text-red-700">
-              {alertas.length} materia{alertas.length !== 1 ? 's' : ''} prima{alertas.length !== 1 ? 's' : ''} bajo punto de reorden
-            </p>
+      {/* Alertas críticas */}
+      {!loading && alertasOrdenadas.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+                <AlertTriangle size={14} className="text-red-500" />
+              </div>
+              <h2 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>
+                Materias primas bajo reorden
+              </h2>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-700">
+                {alertas.length}
+              </span>
+            </div>
+            <Link href="/dashboard/inventario/alertas" className="flex items-center gap-1 text-xs font-bold hover:underline" style={{ color: 'var(--primary)' }}>
+              Ver todas <ChevronRight size={12} />
+            </Link>
           </div>
-          <Link href="/dashboard/inventario/alertas"
-            className="flex-shrink-0 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
-            Ver alertas →
-          </Link>
+          <div className="divide-y divide-slate-50">
+            {alertasOrdenadas.map(mp => (
+              <div key={mp.materia_prima_id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                  <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-main)' }}>{mp.nombre}</span>
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Stock actual</p>
+                    <p className="text-sm font-black tabular-nums" style={{ color: 'var(--text-main)' }}>
+                      {formatCantidad(mp.stock_total, mp.unidad_medida)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Faltante</p>
+                    <p className="text-sm font-black tabular-nums text-red-600">
+                      {formatCantidad(mp.faltante, mp.unidad_medida)}
+                    </p>
+                  </div>
+                  <Link href="/dashboard/inventario/alertas"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0"
+                    style={{ background: 'var(--primary)' }}>
+                    Ordenar
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Módulos */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Módulos disponibles</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {MODULOS.map(({ nombre, desc, Icono, href }) => (
-            <Link key={nombre} href={href}
-              className="group flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all duration-150">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(139,35,35,0.08)' }}>
-                <Icono size={17} style={{ color: 'var(--primary)' }} />
+      {/* Vencimientos próximos */}
+      {!loading && vencenProximo.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-amber-100 bg-amber-50/40">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Clock size={14} className="text-amber-600" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-slate-700 truncate">{nombre}</div>
-                <div className="text-xs text-slate-400 truncate">{desc}</div>
+              <h2 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>
+                Lotes próximos a vencer
+              </h2>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-700">
+                {vencenProximo.length} en ≤ 7 días
+              </span>
+            </div>
+            <Link href="/dashboard/inventario/lotes" className="flex items-center gap-1 text-xs font-bold hover:underline" style={{ color: 'var(--primary)' }}>
+              Ver lotes <ChevronRight size={12} />
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {vencenProximo.map((item, i) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.dias === 0 ? 'bg-red-500' : 'bg-amber-400'}`} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-main)' }}>{item.nombre}</p>
+                    <p className="text-xs text-slate-400">{item.bodega}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0 text-right">
+                  <div>
+                    <p className="text-xs text-slate-400">Stock</p>
+                    <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--text-main)' }}>
+                      {formatCantidad(item.stock, item.unidad)}
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${item.dias === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {item.dias === 0 ? 'Hoy' : `${item.dias}d`}
+                  </span>
+                </div>
               </div>
-              <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0 transition-colors" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Todo en orden */}
+      {!loading && alertas.length === 0 && vencenProximo.length === 0 && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-green-50 border border-green-100">
+          <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+            <TrendingDown size={16} className="text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-green-800">Inventario en buen estado</p>
+            <p className="text-xs text-green-600 mt-0.5">Sin alertas de reorden ni vencimientos próximos.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Acciones rápidas */}
+      <div>
+        <h2 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
+          Acciones rápidas
+        </h2>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+          {ACCIONES.map(({ label, href, Icon, bg, color }) => (
+            <Link key={label} href={href}
+              className="flex flex-col items-center gap-2 p-3.5 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
+                <Icon size={18} className={color} />
+              </div>
+              <span className="text-[11px] font-bold leading-tight text-slate-600">{label}</span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* Acción rápida */}
-      <Link href="/dashboard/inventario/traslados"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors hover:opacity-90 active:scale-95"
-        style={{ background: 'var(--primary)' }}>
-        <ArrowLeftRight size={15} />
-        Registrar traslado
-      </Link>
     </div>
   );
 }

@@ -4,17 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, BarChart2, AlertTriangle, Flame,
-  Scale, ChefHat, Truck, Package, ChevronRight,
+  Scale, ChefHat, Truck, ShoppingBag, ChevronRight, ArrowLeftRight,
 } from 'lucide-react';
 import { obtenerSesion } from '@/lib/session';
 import { reportesService, type Kpis } from '@/services/reportes.service';
-
-const MODULOS = [
-  { nombre: 'Stock de Inventario',    desc: 'Niveles de MP y alertas de reorden',     Icono: Scale,    href: '/dashboard/inventario'  },
-  { nombre: 'Reportes de Producción', desc: 'Órdenes, eficiencia y KPIs productivos', Icono: ChefHat,  href: '/dashboard/reportes'    },
-  { nombre: 'Despachos',              desc: 'Salidas de productos terminados',         Icono: Truck,    href: '/dashboard/despachos'   },
-  { nombre: 'Catálogo',               desc: 'Materias primas y productos terminados',  Icono: Package,  href: '/dashboard/catalogo/mp' },
-];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -24,9 +17,11 @@ function getGreeting() {
 }
 
 function getDateStr() {
-  return new Date().toLocaleDateString('es-CO', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  });
+  return new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function fmtFecha(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 }
 
 export default function GerenciaView() {
@@ -43,37 +38,24 @@ export default function GerenciaView() {
       .finally(() => setLoading(false));
   }, []);
 
+  const ordenes    = kpis?.ordenes_produccion;
   const hayAlertas = (kpis?.alertas_reorden ?? 0) > 0;
+  const total      = ordenes?.total ?? 0;
 
-  const tarjetas = [
-    {
-      titulo: 'Órdenes completadas',
-      valor:  loading ? '—' : (kpis?.ordenes_produccion.completadas ?? 0).toString(),
-      Icono:  Flame,
-      color:  'text-green-600',
-      bg:     'bg-green-50',
-    },
-    {
-      titulo: 'Órdenes pendientes',
-      valor:  loading ? '—' : (kpis?.ordenes_produccion.pendientes ?? 0).toString(),
-      Icono:  TrendingUp,
-      color:  'text-blue-600',
-      bg:     'bg-blue-50',
-    },
-    {
-      titulo: 'Total órdenes',
-      valor:  loading ? '—' : (kpis?.ordenes_produccion.total ?? 0).toString(),
-      Icono:  BarChart2,
-      color:  'text-purple-600',
-      bg:     'bg-purple-50',
-    },
-    {
-      titulo: 'Alertas de reorden',
-      valor:  loading ? '—' : (kpis?.alertas_reorden ?? 0).toString(),
-      Icono:  AlertTriangle,
-      color:  hayAlertas ? 'text-red-500' : 'text-slate-400',
-      bg:     hayAlertas ? 'bg-red-50'    : 'bg-slate-50',
-    },
+  /* barras de estado de producción */
+  const estados = [
+    { label: 'Completadas', value: ordenes?.completadas ?? 0, color: 'bg-green-400'  },
+    { label: 'Pendientes',  value: ordenes?.pendientes  ?? 0, color: 'bg-amber-400'  },
+    { label: 'Anuladas',    value: ordenes?.anuladas    ?? 0, color: 'bg-slate-300'   },
+  ];
+
+  const REPORTES = [
+    { label: 'KPIs globales',   href: '/dashboard/reportes',             Icon: BarChart2,     color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Stock PT',        href: '/dashboard/inventario/stock-pt',  Icon: ShoppingBag,   color: 'text-green-600',  bg: 'bg-green-50'  },
+    { label: 'Movimientos',     href: '/dashboard/reportes/movimientos', Icon: ArrowLeftRight, color: 'text-blue-600',   bg: 'bg-blue-50'   },
+    { label: 'Despachos',       href: '/dashboard/despachos',            Icon: Truck,         color: 'text-slate-600',  bg: 'bg-slate-100' },
+    { label: 'Inventario MP',   href: '/dashboard/inventario',           Icon: Scale,         color: 'text-blue-600',   bg: 'bg-blue-50'   },
+    { label: 'Producción',      href: '/dashboard/produccion',           Icon: ChefHat,       color: 'text-orange-500', bg: 'bg-orange-50' },
   ];
 
   return (
@@ -87,66 +69,122 @@ export default function GerenciaView() {
           </div>
           <div>
             <p className="text-white/70 text-sm">
-              {getGreeting()},{' '}
-              <span className="text-white font-semibold">{firstName}</span>
+              {getGreeting()}, <span className="text-white font-semibold">{firstName}</span>
             </p>
             <h1 className="text-xl font-bold text-white leading-tight">Panel de Gerencia</h1>
             {kpis && (
-              <p className="text-white/50 text-xs mt-0.5">
-                Período: {kpis.periodo.desde} – {kpis.periodo.hasta}
+              <p className="text-white/50 text-xs mt-0.5 capitalize">
+                {getDateStr()} · Período: {fmtFecha(kpis.periodo.desde)} – {fmtFecha(kpis.periodo.hasta)}
               </p>
             )}
           </div>
         </div>
-        <div className="hidden sm:flex flex-col items-end gap-1.5">
-          <span className="text-xs text-white/60 capitalize">{getDateStr()}</span>
-          <span className="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-medium text-white border border-white/10">
-            Gerencia
-          </span>
-        </div>
+        <span className="hidden sm:inline-flex px-3 py-1.5 rounded-lg bg-white/15 text-xs font-medium text-white border border-white/10">
+          Gerencia
+        </span>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {tarjetas.map(({ titulo, valor, Icono, color, bg }) => (
-          <div key={titulo} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${bg}`}>
-              <Icono size={16} className={color} />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          { titulo: 'Completadas (mes)',  valor: loading ? '—' : (ordenes?.completadas ?? 0), Icon: Flame,         color: 'text-green-600',  bg: 'bg-green-50'   },
+          { titulo: 'Pendientes',         valor: loading ? '—' : (ordenes?.pendientes  ?? 0), Icon: TrendingUp,    color: 'text-amber-600',  bg: 'bg-amber-50'   },
+          { titulo: 'Total órdenes',      valor: loading ? '—' : (ordenes?.total       ?? 0), Icon: BarChart2,     color: 'text-purple-600', bg: 'bg-purple-50'  },
+          { titulo: 'Alertas reorden',    valor: loading ? '—' : (kpis?.alertas_reorden ?? 0),Icon: AlertTriangle, color: hayAlertas ? 'text-red-500' : 'text-slate-400', bg: hayAlertas ? 'bg-red-50' : 'bg-slate-50' },
+        ].map(({ titulo, valor, Icon, color, bg }) => (
+          <div key={titulo} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${bg}`}>
+              <Icon size={17} className={color} />
             </div>
-            <div className="text-2xl font-bold text-slate-800 tabular-nums">{valor}</div>
-            <div className="text-xs font-medium text-slate-400 mt-1">{titulo}</div>
+            <div className="text-2xl font-black tabular-nums" style={{ color: 'var(--text-main)' }}>{valor}</div>
+            <div className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>{titulo}</div>
           </div>
         ))}
       </div>
 
-      {/* Módulos */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Módulos disponibles</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {MODULOS.map(({ nombre, desc, Icono, href }) => (
-            <Link key={nombre} href={href}
-              className="group flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all duration-150">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(139,35,35,0.08)' }}>
-                <Icono size={17} style={{ color: 'var(--primary)' }} />
+      {/* Estado de producción del mes */}
+      {!loading && total > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>
+              Estado de producción del mes
+            </h2>
+            <Link href="/dashboard/produccion" className="flex items-center gap-1 text-xs font-bold hover:underline" style={{ color: 'var(--primary)' }}>
+              Ver órdenes <ChevronRight size={12} />
+            </Link>
+          </div>
+
+          {/* Barra apilada */}
+          <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-4">
+            {estados.filter(e => e.value > 0).map(e => (
+              <div
+                key={e.label}
+                className={`${e.color} transition-all`}
+                style={{ width: `${(e.value / total) * 100}%` }}
+                title={`${e.label}: ${e.value}`}
+              />
+            ))}
+          </div>
+
+          {/* Leyenda */}
+          <div className="grid grid-cols-3 gap-3">
+            {estados.map(e => (
+              <div key={e.label} className="flex items-center gap-2.5">
+                <span className={`w-3 h-3 rounded-sm flex-shrink-0 ${e.color}`} />
+                <div>
+                  <p className="text-xs font-medium text-slate-500">{e.label}</p>
+                  <p className="text-lg font-black tabular-nums leading-tight" style={{ color: 'var(--text-main)' }}>
+                    {e.value}
+                    <span className="text-xs font-medium text-slate-400 ml-1">
+                      ({total > 0 ? Math.round((e.value / total) * 100) : 0}%)
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-slate-700 truncate">{nombre}</div>
-                <div className="text-xs text-slate-400 truncate">{desc}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Alerta de reorden */}
+      {!loading && hayAlertas && (
+        <div className="flex items-center justify-between px-5 py-4 rounded-2xl bg-red-50 border border-red-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={17} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-800">
+                {kpis?.alertas_reorden} materia{(kpis?.alertas_reorden ?? 0) !== 1 ? 's' : ''} prima{(kpis?.alertas_reorden ?? 0) !== 1 ? 's' : ''} bajo punto de reorden
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">Revisar inventario para evitar paros de producción.</p>
+            </div>
+          </div>
+          <Link href="/dashboard/inventario/alertas"
+            className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 flex-shrink-0">
+            Revisar <ChevronRight size={12} />
+          </Link>
+        </div>
+      )}
+
+      {/* Acceso rápido a secciones */}
+      <div>
+        <h2 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
+          Acceso rápido
+        </h2>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+          {REPORTES.map(({ label, href, Icon, bg, color }) => (
+            <Link key={label} href={href}
+              className="flex flex-col items-center gap-2 p-3.5 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
+                <Icon size={18} className={color} />
               </div>
-              <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0 transition-colors" />
+              <span className="text-[11px] font-bold leading-tight text-slate-600">{label}</span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* CTA */}
-      <Link href="/dashboard/reportes"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors hover:opacity-90 active:scale-95"
-        style={{ background: 'var(--primary)' }}>
-        <BarChart2 size={15} />
-        Ver reportes completos
-      </Link>
     </div>
   );
 }
