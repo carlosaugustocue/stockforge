@@ -394,7 +394,7 @@ export default function MateriasPrimasPage() {
                           checked={checked}
                           onChange={e => {
                             const next = new Set(provSeleccionados);
-                            e.target.checked ? next.add(prov.id) : next.delete(prov.id);
+                            if (e.target.checked) { next.add(prov.id); } else { next.delete(prov.id); }
                             setProvSeleccionados(next);
                           }}
                           className="w-4 h-4 rounded accent-blue-600 flex-shrink-0"
