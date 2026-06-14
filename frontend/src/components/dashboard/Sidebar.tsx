@@ -78,6 +78,7 @@ const NAV: NavItem[] = [
       { label: 'Materias Primas',    href: '/dashboard/catalogo/mp',      icon: Box          },
       { label: 'Prod. Terminados',   href: '/dashboard/catalogo/pt',      icon: ShoppingBag  },
       { label: 'Bodegas',            href: '/dashboard/catalogo/bodegas', icon: Scale        },
+      { label: 'Proveedores',        href: '/dashboard/catalogo/proveedores', icon: Truck     },
     ],
   },
   {
