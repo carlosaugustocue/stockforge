@@ -17,63 +17,40 @@ body {
   overflow: hidden; /* El scroll lo maneja el <main> interno del layout */
 }
 
-/* FONDO DIAGONAL LIMPIO 50/50 */
-.bg-diagonal-split {
-  background: linear-gradient(110deg,
-      var(--bg-left) 0%,
-      var(--bg-left) 50%,
-      var(--bg-right) 50%,
-      var(--bg-right) 100%);
+/* ── Login: Panel izquierdo ── */
+.login-panel-left {
+  background: linear-gradient(150deg, #8B2323 0%, #6A1A1A 50%, #3D0D0D 100%);
+  position: relative;
 }
-
-/* 1. Triángulo inferior izquierdo (Fondo) */
-.shape-left-bottom {
+.login-panel-left::before {
+  content: '';
   position: absolute;
-  bottom: -5%;
-  left: -5%;
-  width: 400px;
-  height: 400px;
-  background-color: var(--primary);
-  clip-path: polygon(0 0, 0% 100%, 100% 100%);
-  z-index: 0;
-}
-
-/* 2. Figura INTERNA de la tarjeta */
-.card-internal-shape {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 40%;
-  background-color: var(--secondary);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 60%);
-  opacity: 0.05;
-  z-index: 0;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
   pointer-events: none;
 }
 
-/* RAYO DE LUZ (BORDER BEAM) - Versión robusta compatible */
-.beam-effect {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: conic-gradient(
-    transparent, 
-    transparent, 
-    transparent, 
-    var(--primary), 
-    transparent
-  );
-  animation: rotate-beam 4s linear infinite;
-  z-index: 0;
-  pointer-events: none;
+/* ── Anillo flotante decorativo ── */
+@keyframes float-ring {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
 }
+.login-ring { animation: float-ring 8s ease-in-out infinite; }
+.login-ring-2 { animation: float-ring 10s ease-in-out infinite reverse; }
 
-@keyframes rotate-beam {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* ── Blobs suaves para el panel derecho ── */
+.login-blob-1 {
+  position: absolute; top: -8%; right: -8%;
+  width: 420px; height: 420px; border-radius: 50%;
+  background: radial-gradient(circle, #FDF2F4 0%, transparent 68%);
+  opacity: 0.65; pointer-events: none;
+}
+.login-blob-2 {
+  position: absolute; bottom: -6%; left: -4%;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, #FDF2F4 0%, transparent 68%);
+  opacity: 0.4; pointer-events: none;
 }
 
 /* Animación de entrada limpia */

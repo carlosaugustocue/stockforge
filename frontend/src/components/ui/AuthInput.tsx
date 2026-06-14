@@ -44,7 +44,7 @@ export default function AuthInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] transition-all text-sm placeholder:text-slate-300"
+          className="w-full pl-10 pr-10 py-3.5 bg-slate-50/60 border border-slate-200 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 focus:bg-white transition-all text-sm text-[var(--text-main)] placeholder:text-slate-300"
         />
         {rightElement && (
           <div className="absolute right-3">
