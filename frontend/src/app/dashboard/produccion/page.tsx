@@ -259,7 +259,8 @@ export default function ProduccionPage() {
 
   const abrirCrear = () => {
     setPtId(''); setCantidad('');
-    setFecha(new Date().toISOString().split('T')[0]);
+    const now = new Date();
+    setFecha(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
     setMsgErr('');
     setRelacionesPt([]);
     setBusquedaPt('');
@@ -347,7 +348,7 @@ export default function ProduccionPage() {
   const cardProps = (o: OrdenProduccion) => ({
     orden:       o,
     onVerReqs:   handleVerReqs,
-    onEjecutar:  (ord: OrdenProduccion) => { setSelected(ord); setCantProd(String(ord.cantidad_planificada)); setMsgErr(''); setModal('ejecutar'); },
+    onEjecutar:  (ord: OrdenProduccion) => { setSelected(ord); setCantProd(String(Number(ord.cantidad_planificada))); setMsgErr(''); setModal('ejecutar'); },
     onTrasladar: (ord: OrdenProduccion) => { setSelected(ord); setMsgErr(''); setModal('traslado'); },
     onAnular:    (ord: OrdenProduccion) => { setSelected(ord); setMsgErr(''); setModal('anular'); },
   });
@@ -741,7 +742,7 @@ export default function ProduccionPage() {
             </button>
             <button onClick={() => {
               setSelected(ordenCreada);
-              setCantProd(String(ordenCreada.cantidad_planificada));
+              setCantProd(String(Number(ordenCreada.cantidad_planificada)));
               setMsgErr('');
               setModal('ejecutar');
             }}

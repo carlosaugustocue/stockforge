@@ -7,6 +7,7 @@ import { recepcionesService, type OrdenPedido } from '@/services/recepciones.ser
 import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { catalogoService, type MateriaPrima } from '@/services/catalogo.service';
 import { formatNum } from '@/lib/utils';
+import { obtenerSesion } from '@/lib/session';
 
 const ESTADO_LABEL: Record<string, string> = {
   pendiente:    'Pendiente',
@@ -32,10 +33,12 @@ interface ItemRecepcion {
 
 type Modal = 'crear' | 'recibir' | null;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function RecepcionesPage() {
   const searchParams = useSearchParams();
+  const rolUsuario = obtenerSesion()?.usuario.rol ?? '';
+  const puedeCrearOrden = rolUsuario === 'encargado_inventarios';
 
   const [ordenes,     setOrdenes]     = useState<OrdenPedido[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -216,11 +219,13 @@ export default function RecepcionesPage() {
             style={{ background: 'var(--primary)' }}>
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Actualizar
           </button>
-          <button onClick={abrirCrear}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
-            style={{ background: 'var(--secondary)' }}>
-            <Plus size={13} /> Nueva orden de compra
-          </button>
+          {puedeCrearOrden && (
+            <button onClick={abrirCrear}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
+              style={{ background: 'var(--secondary)' }}>
+              <Plus size={13} /> Nueva orden de compra
+            </button>
+          )}
         </div>
       </div>
 
@@ -243,11 +248,13 @@ export default function RecepcionesPage() {
               <Package size={32} className="mx-auto mb-3 opacity-25" style={{ color: 'var(--text-muted)' }} />
               <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-muted)' }}>No hay órdenes de compra</p>
               <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Crea una orden cuando necesites reabastecer materias primas</p>
-              <button onClick={abrirCrear}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-black uppercase tracking-widest text-white"
-                style={{ background: 'var(--secondary)' }}>
-                <Plus size={14} /> Nueva orden de compra
-              </button>
+              {puedeCrearOrden && (
+                <button onClick={abrirCrear}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-black uppercase tracking-widest text-white"
+                  style={{ background: 'var(--secondary)' }}>
+                  <Plus size={14} /> Nueva orden de compra
+                </button>
+              )}
             </div>
           )}
 

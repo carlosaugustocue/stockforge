@@ -13,7 +13,7 @@ class CreateOrdenProduccionRequest extends FormRequest
         return [
             'producto_terminado_id' => ['required', 'integer', 'exists:productos_terminados,id'],
             'cantidad_planificada'  => ['required', 'numeric', 'gt:0'],
-            'fecha_planificada'     => ['required', 'date', 'after_or_equal:today'],
+            'fecha_planificada'     => ['required', 'date'],
             'observaciones'         => ['nullable', 'string', 'max:500'],
         ];
     }

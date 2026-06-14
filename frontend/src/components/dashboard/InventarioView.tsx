@@ -25,7 +25,8 @@ function getDateStr() {
 function diasHasta(fecha: string | null): number | null {
   if (!fecha) return null;
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const f   = new Date(fecha); f.setHours(0, 0, 0, 0);
+  const f   = new Date(fecha.length === 10 ? fecha + 'T12:00:00' : fecha);
+  f.setHours(0, 0, 0, 0);
   return Math.ceil((f.getTime() - hoy.getTime()) / 86_400_000);
 }
 
