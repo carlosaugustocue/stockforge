@@ -109,6 +109,24 @@ class InventarioController extends Controller
      *     @OA\Response(response=422, description="Stock insuficiente o bodega destino igual a origen")
      * )
      */
+    /**
+     * @OA\Get(
+     *     path="/inventario/lotes/mp",
+     *     summary="Lotes activos de materias primas",
+     *     description="Retorna todos los lotes de MP con cantidad > 0, ordenados FEFO. Permite al operario ver qué usar primero.",
+     *     tags={"Inventario"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Lotes activos de MP"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere inventario.leer)")
+     * )
+     */
+    public function lotesMp(): JsonResponse
+    {
+        $lotes = $this->service->lotesActivosMp();
+        return $this->successResponse($lotes, 'Lotes activos de materias primas consultados.');
+    }
+
     public function trasladar(TrasladoMpRequest $request): JsonResponse
     {
         try {

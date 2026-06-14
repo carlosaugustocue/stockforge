@@ -130,6 +130,7 @@ Route::middleware(['auth:sanctum', 'permission:bodegas.escribir'])->group(functi
 Route::middleware(['auth:sanctum', 'permission:inventario.leer'])->group(function () {
     Route::get('/inventario/stock/mp',      [InventarioController::class, 'stockMp']);
     Route::get('/inventario/stock/mp/{id}', [InventarioController::class, 'stockMpPorId']);
+    Route::get('/inventario/lotes/mp',      [InventarioController::class, 'lotesMp']);
 });
 
 // -------------------------------------------------------------------------

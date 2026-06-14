@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Scale, AlertTriangle, ArrowLeftRight,
   ChefHat, Flame, Truck, ClipboardList, PackageCheck,
   BarChart2, Box, ShoppingBag, Users, Lock, FileText,
-  ChevronDown, ChevronRight, Warehouse,
+  ChevronDown, ChevronRight, Warehouse, Layers, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import { obtenerSesion } from '@/lib/session';
@@ -31,9 +31,11 @@ const NAV: NavItem[] = [
     icon: Scale,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Stock MP',    href: '/dashboard/inventario',                icon: Scale         },
-      { label: 'Bodegas',    href: '/dashboard/inventario/bodegas',        icon: Warehouse     },
-      { label: 'Alertas',    href: '/dashboard/inventario/alertas',        icon: AlertTriangle },
+      { label: 'Stock MP',    href: '/dashboard/inventario',                icon: Scale          },
+      { label: 'Stock PT',    href: '/dashboard/inventario/stock-pt',       icon: ShoppingBag    },
+      { label: 'Lotes MP',   href: '/dashboard/inventario/lotes',          icon: Layers         },
+      { label: 'Bodegas',    href: '/dashboard/inventario/bodegas',        icon: Warehouse      },
+      { label: 'Alertas',    href: '/dashboard/inventario/alertas',        icon: AlertTriangle  },
       { label: 'Traslados',  href: '/dashboard/inventario/traslados',      icon: ArrowLeftRight },
     ],
   },
@@ -76,10 +78,10 @@ const NAV: NavItem[] = [
     icon: Box,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Materias Primas',    href: '/dashboard/catalogo/mp',      icon: Box          },
-      { label: 'Prod. Terminados',   href: '/dashboard/catalogo/pt',      icon: ShoppingBag  },
-      { label: 'Bodegas',            href: '/dashboard/catalogo/bodegas', icon: Scale        },
-      { label: 'Proveedores',        href: '/dashboard/catalogo/proveedores', icon: Truck     },
+      { label: 'Materias Primas',    href: '/dashboard/catalogo/mp',          icon: Box      },
+      { label: 'Prod. Terminados',   href: '/dashboard/catalogo/pt',          icon: ShoppingBag },
+      { label: 'Config. Bodegas',    href: '/dashboard/catalogo/bodegas',     icon: Settings },
+      { label: 'Proveedores',        href: '/dashboard/catalogo/proveedores', icon: Truck    },
     ],
   },
   {

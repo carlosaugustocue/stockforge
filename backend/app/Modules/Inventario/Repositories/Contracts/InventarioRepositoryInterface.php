@@ -23,4 +23,7 @@ interface InventarioRepositoryInterface
 
     /** Lote de MP por ID con bodega cargada. */
     public function lotePorId(int $id): ?LoteMateriaPrima;
+
+    /** Todos los lotes activos de MP (cantidad_actual > 0) ordenados FEFO. */
+    public function lotesActivosMp(): Collection;
 }

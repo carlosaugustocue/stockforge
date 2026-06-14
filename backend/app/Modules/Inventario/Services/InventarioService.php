@@ -58,6 +58,30 @@ class InventarioService
     }
 
     /**
+     * Retorna todos los lotes activos de MP con detalle por lote (RFINV02).
+     * Ordenados FEFO para que el operario sepa qué usar primero.
+     */
+    public function lotesActivosMp(): array
+    {
+        return $this->repo->lotesActivosMp()
+            ->map(fn(LoteMateriaPrima $lote) => [
+                'lote_id'          => $lote->id,
+                'materia_prima_id' => $lote->materia_prima_id,
+                'materia_prima'    => $lote->materiaPrima?->nombre,
+                'unidad_medida'    => $lote->materiaPrima?->unidadMedida?->nombre,
+                'bodega_id'        => $lote->bodega_id,
+                'bodega'           => $lote->bodega?->nombre,
+                'tipo_bodega'      => $lote->bodega?->tipo,
+                'cantidad_inicial' => round((float) $lote->cantidad_inicial, 3),
+                'cantidad_actual'  => round((float) $lote->cantidad_actual, 3),
+                'fecha_vencimiento'=> $lote->fecha_vencimiento?->toDateString(),
+                'fecha_ingreso'    => $lote->fecha_ingreso?->toDateTimeString(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Traslada una cantidad de MP de una bodega a otra (RFINV04).
      *
      * Si la cantidad es menor al stock del lote, se reduce cantidad_actual del lote
