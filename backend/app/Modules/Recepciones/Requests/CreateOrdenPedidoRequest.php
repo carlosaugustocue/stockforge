@@ -21,10 +21,10 @@ class CreateOrdenPedidoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Nuevo: FK al catálogo de proveedores
-            'proveedor_id'           => ['nullable', 'integer', 'exists:proveedores,id'],
-            // Legado / fallback: nombre libre (para tests y compatibilidad)
-            'proveedor'              => ['nullable', 'string', 'max:255'],
+            // Nuevo: FK al catálogo de proveedores (requerido si no se envía 'proveedor')
+            'proveedor_id'           => ['nullable', 'integer', 'exists:proveedores,id', 'required_without:proveedor'],
+            // Legado / fallback: nombre libre (requerido si no se envía 'proveedor_id')
+            'proveedor'              => ['nullable', 'string', 'max:255', 'required_without:proveedor_id'],
 
             'fecha_esperada'         => ['nullable', 'date', 'after_or_equal:today'],
             'observaciones'          => ['nullable', 'string', 'max:500'],
