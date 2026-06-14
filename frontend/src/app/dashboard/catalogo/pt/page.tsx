@@ -290,20 +290,37 @@ export default function ProductosTerminadosPage() {
           </p>
           <form onSubmit={handleAsociar} className="flex gap-2 items-end">
             <div className="flex-1">
-              <select value={mpAsocId} onChange={e => setMpAsocId(e.target.value)}
+              <select value={mpAsocId} onChange={e => { setMpAsocId(e.target.value); setCantAsoc(''); }}
                 className="w-full px-3 py-2.5 rounded-lg border-2 border-black/10 text-sm font-bold focus:outline-none focus:border-[var(--primary)]"
                 style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }} required>
                 <option value="">— Materia prima —</option>
                 {mps.filter(mp => !relaciones.find(r => r.materia_prima_id === mp.id)).map(mp => (
-                  <option key={mp.id} value={mp.id}>{mp.nombre} ({mp.unidad_medida?.nombre ?? ''})</option>
+                  <option key={mp.id} value={mp.id}>{mp.nombre}</option>
                 ))}
               </select>
             </div>
             <div>
-              <input type="number" step="0.001" min="0.001" placeholder="Cantidad" value={cantAsoc}
-                onChange={e => setCantAsoc(e.target.value)}
-                className="w-28 px-3 py-2.5 rounded-lg border-2 border-black/10 text-sm focus:outline-none focus:border-[var(--primary)]"
-                style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }} required />
+              {(() => {
+                const unidad = mps.find(mp => String(mp.id) === mpAsocId)?.unidad_medida?.nombre;
+                return (
+                  <div className="flex rounded-lg border-2 border-black/10 overflow-hidden focus-within:border-[var(--primary)]"
+                    style={{ background: 'var(--bg-left)' }}>
+                    <input type="number" step="0.001" min="0.001"
+                      placeholder="Cantidad"
+                      value={cantAsoc}
+                      onChange={e => setCantAsoc(e.target.value)}
+                      className="w-24 px-3 py-2.5 text-sm focus:outline-none bg-transparent"
+                      style={{ color: 'var(--text-main)' }}
+                      required />
+                    {unidad && (
+                      <span className="px-2.5 py-2.5 text-xs font-bold border-l-2 border-black/10 flex items-center flex-shrink-0"
+                        style={{ color: 'var(--text-muted)', background: 'var(--bg-right)' }}>
+                        {unidad}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <button type="submit" disabled={enviando}
               className="px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest text-white disabled:opacity-50 hover:opacity-90"
