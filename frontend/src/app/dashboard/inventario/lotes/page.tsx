@@ -86,15 +86,24 @@ export default function LotesMpPage() {
     Array.from(new Set(lotes.map(l => l.bodega))).sort(),
     [lotes]);
 
-  /* lotes filtrados */
+  /* lotes filtrados y ordenados FEFO: vencimiento más próximo primero, sin fecha al final */
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
-    return lotes.filter(l => {
-      if (q && !l.materia_prima.toLowerCase().includes(q) && !l.bodega.toLowerCase().includes(q)) return false;
-      if (filtroBodega !== 'todas' && l.bodega !== filtroBodega) return false;
-      if (filtroEstado !== 'todos' && estadoLote(l.fecha_vencimiento) !== filtroEstado) return false;
-      return true;
-    });
+    return lotes
+      .filter(l => {
+        if (q && !l.materia_prima.toLowerCase().includes(q) && !l.bodega.toLowerCase().includes(q)) return false;
+        if (filtroBodega !== 'todas' && l.bodega !== filtroBodega) return false;
+        if (filtroEstado !== 'todos' && estadoLote(l.fecha_vencimiento) !== filtroEstado) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (!a.fecha_vencimiento && !b.fecha_vencimiento) return 0;
+        if (!a.fecha_vencimiento) return 1;   // sin fecha → al final
+        if (!b.fecha_vencimiento) return -1;
+        const diff = new Date(a.fecha_vencimiento).getTime() - new Date(b.fecha_vencimiento).getTime();
+        if (diff !== 0) return diff;           // ASC: más próximo primero
+        return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime(); // desempate FEFO
+      });
   }, [lotes, busqueda, filtroEstado, filtroBodega]);
 
   /* KPIs */

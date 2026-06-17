@@ -69,7 +69,7 @@ class InventarioRepository implements InventarioRepositoryInterface
         return LoteMateriaPrima::query()
             ->where('cantidad_actual', '>', 0)
             ->with(['materiaPrima.unidadMedida', 'bodega'])
-            ->orderBy('fecha_vencimiento')
+            ->orderByRaw('fecha_vencimiento IS NULL, fecha_vencimiento ASC')
             ->orderBy('fecha_ingreso')
             ->get();
     }
