@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   RefreshCw, ChefHat, ChevronDown, ChevronRight,
-  Search, Calendar, CheckCircle, Clock, XCircle, Flame,
+  Search, Calendar, CheckCircle, Clock, Flame,
 } from 'lucide-react';
 import { reportesService } from '@/services/reportes.service';
 
