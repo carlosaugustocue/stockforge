@@ -31,6 +31,7 @@ namespace App\Shared\OpenApi;
  * @OA\Tag(name="Inventario", description="Consulta de stock, alertas de reorden y traslados entre bodegas")
  * @OA\Tag(name="Recepciones", description="Órdenes de pedido y entrada de materias primas")
  * @OA\Tag(name="Producción", description="Ciclo productivo completo con selección FEFO")
+ * @OA\Tag(name="Clientes", description="Gestión de clientes (empresas y personas naturales)")
  * @OA\Tag(name="Despacho", description="Salida de productos terminados hacia clientes")
  * @OA\Tag(name="Reportes", description="KPIs y reportes de gestión")
  * @OA\Tag(name="Permisos", description="Gestión de la matriz RBAC dinámica")

@@ -1227,6 +1227,268 @@
                 ]
             }
         },
+        "/clientes": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Listar o buscar clientes",
+                "description": "Retorna todos los clientes. Con parámetro ?q= filtra por nombre, NIT/cédula o email.",
+                "operationId": "6c76a73e7990ca5b075cb3e29bbcf6ef",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Texto libre para buscar por nombre, NIT/cédula o email",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de clientes"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere despachos.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Crear cliente",
+                "operationId": "c78581cd6b177e793dc8d6a444226225",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "tipo",
+                                    "nombre"
+                                ],
+                                "properties": {
+                                    "tipo": {
+                                        "type": "string",
+                                        "example": "empresa",
+                                        "enum": [
+                                            "persona",
+                                            "empresa"
+                                        ]
+                                    },
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Distribuidora El Trigal S.A.S."
+                                    },
+                                    "nit_cedula": {
+                                        "type": "string",
+                                        "example": "900.234.567-1"
+                                    },
+                                    "telefono": {
+                                        "type": "string",
+                                        "example": "3112345678"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "pedidos@eltrigal.com.co"
+                                    },
+                                    "direccion": {
+                                        "type": "string",
+                                        "example": "Calle 15 # 22-45, Bogotá"
+                                    },
+                                    "contacto_nombre": {
+                                        "type": "string",
+                                        "example": "Andrés Moreno"
+                                    },
+                                    "activo": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cliente creado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere despachos.escribir)"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/clientes/{id}": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Ver cliente",
+                "operationId": "049956b0534b5fc4252025354a47b7ee",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle del cliente"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Eliminar cliente",
+                "operationId": "f41de18d75e583011df84e3dd1971ebd",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cliente eliminado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere despachos.escribir)"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Actualizar cliente",
+                "operationId": "d5e5fb2b6eb5f58e7c2297388fa3933f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string"
+                                    },
+                                    "nit_cedula": {
+                                        "type": "string"
+                                    },
+                                    "telefono": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "direccion": {
+                                        "type": "string"
+                                    },
+                                    "contacto_nombre": {
+                                        "type": "string"
+                                    },
+                                    "activo": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cliente actualizado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso"
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/despachos": {
             "get": {
                 "tags": [
@@ -1440,55 +1702,23 @@
                 ]
             }
         },
-        "/inventario/traslados": {
-            "post": {
+        "/inventario/lotes/mp": {
+            "get": {
                 "tags": [
                     "Inventario"
                 ],
-                "summary": "Trasladar materia prima entre bodegas",
-                "description": "Mueve una cantidad de MP de un lote a otra bodega. Si es traslado total, actualiza bodega_id del lote. Si es parcial, crea un nuevo lote heredando trazabilidad (RFINV04).",
-                "operationId": "a787fdf012faaba9c70f78eda1f82e72",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "lote_id",
-                                    "bodega_destino_id",
-                                    "cantidad"
-                                ],
-                                "properties": {
-                                    "lote_id": {
-                                        "type": "integer",
-                                        "example": 1
-                                    },
-                                    "bodega_destino_id": {
-                                        "type": "integer",
-                                        "example": 2
-                                    },
-                                    "cantidad": {
-                                        "type": "number",
-                                        "example": 25.5
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
+                "summary": "Lotes activos de materias primas",
+                "description": "Retorna todos los lotes de MP con cantidad > 0, ordenados FEFO. Permite al operario ver qué usar primero.",
+                "operationId": "42463d364f753d9aa012ce8f56344bab",
                 "responses": {
-                    "201": {
-                        "description": "Traslado registrado con movimientos SALIDA y ENTRADA"
+                    "200": {
+                        "description": "Lotes activos de MP"
                     },
                     "401": {
                         "description": "No autenticado"
                     },
                     "403": {
-                        "description": "Sin permiso (requiere inventario.escribir)"
-                    },
-                    "422": {
-                        "description": "Stock insuficiente o bodega destino igual a origen"
+                        "description": "Sin permiso (requiere inventario.leer)"
                     }
                 },
                 "security": [
@@ -2502,6 +2732,10 @@
         {
             "name": "Producción",
             "description": "Ciclo productivo completo con selección FEFO"
+        },
+        {
+            "name": "Clientes",
+            "description": "Gestión de clientes (empresas y personas naturales)"
         },
         {
             "name": "Despacho",
