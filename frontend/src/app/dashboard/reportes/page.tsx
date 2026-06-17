@@ -91,6 +91,7 @@ async function exportarPDF(ind: IndicadoresOperativos, kpis: Kpis | null) {
   });
 
   if (kpis) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const finalY = (doc as any).lastAutoTable?.finalY ?? 100;
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
