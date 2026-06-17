@@ -23,6 +23,7 @@ class CreateDespachoRequest extends FormRequest
         return [
             'lote_pt_id'         => ['required', 'integer', 'exists:lotes_producto_terminado,id'],
             'cantidad'           => ['required', 'numeric', 'gt:0'],
+            'cliente_id'         => ['nullable', 'integer', 'exists:clientes,id'],
             'referencia_cliente' => ['nullable', 'string', 'max:255'],
         ];
     }

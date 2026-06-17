@@ -11,6 +11,7 @@ use App\Modules\Inventario\Controllers\InventarioController;
 use App\Modules\Produccion\Controllers\ProduccionController;
 use App\Modules\Recepciones\Controllers\RecepcionController;
 use App\Modules\Despacho\Controllers\DespachoController;
+use App\Modules\Clientes\Controllers\ClienteController;
 use App\Modules\Reportes\Controllers\ReportesController;
 use Illuminate\Support\Facades\Route;
 
@@ -189,14 +190,36 @@ Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(func
 });
 
 // -------------------------------------------------------------------------
+// MÓDULO CLIENTES — Gestión de clientes persona/empresa
+// -------------------------------------------------------------------------
+Route::middleware(['auth:sanctum', 'permission:despachos.leer'])->group(function () {
+    Route::get('/clientes',      [ClienteController::class, 'index']);
+    Route::get('/clientes/{id}', [ClienteController::class, 'show']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(function () {
+    Route::post('/clientes',           [ClienteController::class, 'store']);
+    Route::patch('/clientes/{id}',     [ClienteController::class, 'update']);
+    Route::delete('/clientes/{id}',    [ClienteController::class, 'destroy']);
+});
+
+// -------------------------------------------------------------------------
 // MÓDULO REPORTES — KPIs y reportes de gestión (reportes.leer)
 // -------------------------------------------------------------------------
 Route::middleware(['auth:sanctum', 'permission:reportes.leer'])->group(function () {
+    Route::get('/reportes/indicadores', [ReportesController::class, 'indicadores']);
     Route::get('/reportes/kpis',        [ReportesController::class, 'kpis']);
     Route::get('/reportes/produccion',  [ReportesController::class, 'produccion']);
     Route::get('/reportes/despachos',   [ReportesController::class, 'despachos']);
     Route::get('/reportes/movimientos', [ReportesController::class, 'movimientos']);
     Route::get('/reportes/stock-pt',    [ReportesController::class, 'stockPt']);
+
+    // Auditoría detallada por tipo de operación
+    Route::get('/reportes/auditoria/recepciones',          [ReportesController::class, 'auditRecepciones']);
+    Route::get('/reportes/auditoria/producciones',         [ReportesController::class, 'auditProducciones']);
+    Route::get('/reportes/auditoria/producciones/{id}',    [ReportesController::class, 'auditProduccionDetalle']);
+    Route::get('/reportes/auditoria/despachos',            [ReportesController::class, 'auditDespachos']);
+    Route::get('/reportes/auditoria/traslados-mp',         [ReportesController::class, 'auditTrasladosMp']);
 });
 
 // -------------------------------------------------------------------------

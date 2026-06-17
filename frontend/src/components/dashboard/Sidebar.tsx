@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Scale, AlertTriangle, ArrowLeftRight,
   ChefHat, Flame, Truck, ClipboardList, PackageCheck,
   BarChart2, Box, ShoppingBag, Users, Lock, FileText,
-  ChevronDown, ChevronRight, Warehouse, Layers, Settings,
+  ChevronDown, ChevronRight, Warehouse, Layers, Settings, ClipboardCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { obtenerSesion } from '@/lib/session';
@@ -60,7 +60,8 @@ const NAV: NavItem[] = [
     icon: Truck,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'Lista', href: '/dashboard/despachos', icon: Truck },
+      { label: 'Lista',     href: '/dashboard/despachos', icon: Truck  },
+      { label: 'Clientes',  href: '/dashboard/clientes',  icon: Users  },
     ],
   },
   {
@@ -68,9 +69,20 @@ const NAV: NavItem[] = [
     icon: BarChart2,
     roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
     children: [
-      { label: 'KPIs',        href: '/dashboard/reportes',             icon: BarChart2      },
-      { label: 'Stock PT',    href: '/dashboard/reportes/stock-pt',    icon: ShoppingBag    },
-      { label: 'Movimientos', href: '/dashboard/reportes/movimientos', icon: ArrowLeftRight },
+      { label: 'KPIs',              href: '/dashboard/reportes',                                  icon: BarChart2       },
+      { label: 'Stock PT',          href: '/dashboard/reportes/stock-pt',                         icon: ShoppingBag     },
+      { label: 'Movimientos',       href: '/dashboard/reportes/movimientos',                      icon: ArrowLeftRight  },
+    ],
+  },
+  {
+    label: 'Auditoría',
+    icon: ClipboardCheck,
+    roles: ['gerencia', 'jefe_produccion', 'encargado_inventarios'],
+    children: [
+      { label: 'Recepciones MP',  href: '/dashboard/reportes/auditoria/recepciones',   icon: PackageCheck   },
+      { label: 'Producciones',    href: '/dashboard/reportes/auditoria/producciones',  icon: Flame          },
+      { label: 'Traslados MP',    href: '/dashboard/reportes/auditoria/traslados-mp',  icon: ArrowLeftRight },
+      { label: 'Despachos',       href: '/dashboard/reportes/auditoria/despachos',     icon: Truck          },
     ],
   },
   {

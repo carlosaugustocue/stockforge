@@ -16,11 +16,55 @@ export interface Kpis {
   periodo: { desde: string; hasta: string };
 }
 
+export interface Indicador {
+  valor: number;
+  unidad: string;
+  descripcion: string;
+  estado: 'bueno' | 'medio' | 'bajo';
+}
+
+export interface DatoDespacho {
+  fecha: string;
+  total: number;
+  num: number;
+}
+
+export interface DatoProduccionMes {
+  mes: string;
+  completada: number;
+  producido: number;
+  pendiente: number;
+  anulada: number;
+}
+
+export interface DatoDistribucion {
+  estado: string;
+  total: number;
+}
+
+export interface IndicadoresOperativos {
+  indicadores: {
+    rotacion_inventario: Indicador;
+    exactitud_inventario: Indicador;
+    nivel_servicio: Indicador;
+    utilizacion_almacen: Indicador;
+  };
+  graficos: {
+    despachos_30d: DatoDespacho[];
+    produccion_6m: DatoProduccionMes[];
+    distribucion_ordenes: DatoDistribucion[];
+  };
+  periodo: { desde: string; hasta: string };
+}
+
 const unwrap = <T>(res: { data: T }) => res.data;
 
 export const reportesService = {
   kpis: () =>
     apiFetch<{ data: Kpis }>('/reportes/kpis').then(unwrap),
+
+  indicadores: () =>
+    apiFetch<{ data: IndicadoresOperativos }>('/reportes/indicadores').then(unwrap),
 
   produccion: (desde?: string, hasta?: string) => {
     const qs =
@@ -43,4 +87,28 @@ export const reportesService = {
 
   stockPt: () =>
     apiFetch<{ data: unknown }>('/reportes/stock-pt').then(unwrap),
+
+  // ── Auditoría ──────────────────────────────────────────────────────────────
+  auditRecepciones: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/recepciones${qs}`).then(unwrap);
+  },
+
+  auditProducciones: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/producciones${qs}`).then(unwrap);
+  },
+
+  auditProduccionDetalle: (id: number) =>
+    apiFetch<{ data: unknown }>(`/reportes/auditoria/producciones/${id}`).then(unwrap),
+
+  auditDespachos: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/despachos${qs}`).then(unwrap);
+  },
+
+  auditTrasladosMp: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/traslados-mp${qs}`).then(unwrap);
+  },
 };

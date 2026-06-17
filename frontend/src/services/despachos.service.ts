@@ -12,6 +12,7 @@ export interface Despacho {
 export interface RegistrarDespachoBody {
   lote_pt_id: number;
   cantidad: number;
+  cliente_id?: number;
   referencia_cliente?: string;
 }
 

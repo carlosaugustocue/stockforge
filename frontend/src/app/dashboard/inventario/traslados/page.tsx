@@ -62,6 +62,7 @@ export default function TrasladosPage() {
     cargarHistorial();
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { cargarDatos(); }, []);
 
   const mpSeleccionada   = stock.find(mp => mp.materia_prima_id.toString() === mpId);

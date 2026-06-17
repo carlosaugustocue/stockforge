@@ -6,7 +6,8 @@ import { RefreshCw, Plus, PackageCheck, X, Trash2, Building2, Phone, Mail, Packa
 import { recepcionesService, type OrdenPedido } from '@/services/recepciones.service';
 import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { catalogoService, type MateriaPrima } from '@/services/catalogo.service';
-import { formatNum } from '@/lib/utils';
+import { formatCantidad } from '@/lib/utils';
+import { obtenerSesion } from '@/lib/session';
 
 const ESTADO_LABEL: Record<string, string> = {
   pendiente:    'Pendiente',
@@ -32,10 +33,12 @@ interface ItemRecepcion {
 
 type Modal = 'crear' | 'recibir' | null;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function RecepcionesPage() {
   const searchParams = useSearchParams();
+  const rolUsuario = obtenerSesion()?.usuario.rol ?? '';
+  const puedeCrearOrden = rolUsuario === 'encargado_inventarios';
 
   const [ordenes,     setOrdenes]     = useState<OrdenPedido[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -216,11 +219,13 @@ export default function RecepcionesPage() {
             style={{ background: 'var(--primary)' }}>
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Actualizar
           </button>
-          <button onClick={abrirCrear}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
-            style={{ background: 'var(--secondary)' }}>
-            <Plus size={13} /> Nueva orden de compra
-          </button>
+          {puedeCrearOrden && (
+            <button onClick={abrirCrear}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
+              style={{ background: 'var(--secondary)' }}>
+              <Plus size={13} /> Nueva orden de compra
+            </button>
+          )}
         </div>
       </div>
 
@@ -243,11 +248,13 @@ export default function RecepcionesPage() {
               <Package size={32} className="mx-auto mb-3 opacity-25" style={{ color: 'var(--text-muted)' }} />
               <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-muted)' }}>No hay órdenes de compra</p>
               <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Crea una orden cuando necesites reabastecer materias primas</p>
-              <button onClick={abrirCrear}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-black uppercase tracking-widest text-white"
-                style={{ background: 'var(--secondary)' }}>
-                <Plus size={14} /> Nueva orden de compra
-              </button>
+              {puedeCrearOrden && (
+                <button onClick={abrirCrear}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-black uppercase tracking-widest text-white"
+                  style={{ background: 'var(--secondary)' }}>
+                  <Plus size={14} /> Nueva orden de compra
+                </button>
+              )}
             </div>
           )}
 
@@ -439,7 +446,7 @@ export default function RecepcionesPage() {
                   <div key={item.id} className="flex justify-between text-sm">
                     <span style={{ color: 'var(--text-main)' }}>{item.materia_prima}</span>
                     <span className="font-black" style={{ color: 'var(--primary)' }}>
-                      {formatNum(item.cantidad_solicitada)} {item.unidad_medida}
+                      {formatCantidad(item.cantidad_solicitada, item.unidad_medida)}
                     </span>
                   </div>
                 ))}
@@ -450,7 +457,7 @@ export default function RecepcionesPage() {
           {msgErr && <ErrBox msg={msgErr} />}
           <form onSubmit={handleRecibir} className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
                   Materias primas recibidas *
                 </label>
@@ -460,35 +467,85 @@ export default function RecepcionesPage() {
                   <Plus size={10} /> Agregar ítem
                 </button>
               </div>
-              <div className="space-y-2">
-                {itemsRecepcion.map((item, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                    <select value={item.materia_prima_id}
-                      onChange={e => updateItemRec(i, 'materia_prima_id', e.target.value)}
-                      className="w-full px-2 py-2 rounded-lg border-2 border-black/10 text-xs font-bold focus:outline-none focus:border-[var(--primary)]"
-                      style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }} required>
-                      <option value="">— Materia prima —</option>
-                      {mps.map(mp => <option key={mp.id} value={mp.id}>{mp.nombre}</option>)}
-                    </select>
-                    <input type="number" step="0.001" min="0.001" placeholder="Cantidad"
-                      value={item.cantidad} onChange={e => updateItemRec(i, 'cantidad', e.target.value)}
-                      className="w-28 px-2 py-2 rounded-lg border-2 border-black/10 text-xs focus:outline-none focus:border-[var(--primary)]"
-                      style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }} required />
-                    <input type="date" title="Fecha de vencimiento (opcional)"
-                      value={item.fecha_vencimiento} onChange={e => updateItemRec(i, 'fecha_vencimiento', e.target.value)}
-                      className="w-36 px-2 py-2 rounded-lg border-2 border-black/10 text-xs focus:outline-none focus:border-[var(--primary)]"
-                      style={{ background: 'var(--bg-left)', color: 'var(--text-main)' }} />
-                    {itemsRecepcion.length > 1 && (
-                      <button type="button" onClick={() => removeItemRec(i)}
-                        className="p-2 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {itemsRecepcion.map((item, i) => {
+                  const mpInfo        = mps.find(m => String(m.id) === item.materia_prima_id);
+                  const unidad        = mpInfo?.unidad_medida?.nombre ?? '';
+                  const itemSolicitado = selected?.items.find(si => String(si.materia_prima_id) === item.materia_prima_id);
+                  return (
+                    <div key={i} className="rounded-xl border-2 border-black/5 p-3 space-y-3" style={{ background: 'var(--bg-left)' }}>
+                      {/* Fila superior: MP + botón eliminar */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
+                            Materia prima
+                          </label>
+                          <select value={item.materia_prima_id}
+                            onChange={e => updateItemRec(i, 'materia_prima_id', e.target.value)}
+                            className="w-full px-2.5 py-2 rounded-lg border-2 border-black/10 text-sm font-bold focus:outline-none focus:border-[var(--primary)]"
+                            style={{ background: 'var(--bg-right)', color: 'var(--text-main)' }} required>
+                            <option value="">— Seleccionar materia prima —</option>
+                            {mps.map(mp => (
+                              <option key={mp.id} value={mp.id}>
+                                {mp.nombre}{mp.unidad_medida ? ` (${mp.unidad_medida.nombre})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {itemsRecepcion.length > 1 && (
+                          <button type="button" onClick={() => removeItemRec(i)}
+                            className="mt-6 p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors flex-shrink-0">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Fila inferior: Cantidad + Fecha vencimiento */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
+                            Cantidad recibida{unidad ? ` (${unidad})` : ''} *
+                          </label>
+                          <div className="flex rounded-lg border-2 border-black/10 overflow-hidden focus-within:border-[var(--primary)]"
+                            style={{ background: 'var(--bg-right)' }}>
+                            <input type="number" step="0.001" min="0.001"
+                              placeholder="0"
+                              value={item.cantidad} onChange={e => updateItemRec(i, 'cantidad', e.target.value)}
+                              className="flex-1 px-2.5 py-2 text-sm focus:outline-none bg-transparent"
+                              required />
+                            {unidad && (
+                              <span className="px-2.5 py-2 text-xs font-bold border-l-2 border-black/10 flex items-center flex-shrink-0"
+                                style={{ color: 'var(--text-muted)' }}>
+                                {unidad}
+                              </span>
+                            )}
+                          </div>
+                          {itemSolicitado && (
+                            <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                              Solicitado: <strong style={{ color: 'var(--text-main)' }}>
+                                {formatCantidad(itemSolicitado.cantidad_solicitada, itemSolicitado.unidad_medida ?? unidad)}
+                              </strong>
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
+                            Fecha de vencimiento del lote
+                          </label>
+                          <input type="date"
+                            value={item.fecha_vencimiento} onChange={e => updateItemRec(i, 'fecha_vencimiento', e.target.value)}
+                            className="w-full px-2.5 py-2 rounded-lg border-2 border-black/10 text-sm focus:outline-none focus:border-[var(--primary)]"
+                            style={{ background: 'var(--bg-right)', color: 'var(--text-main)' }} />
+                          <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Opcional</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                La fecha de vencimiento es opcional. Los lotes se crean automáticamente en Bodega Principal.
+              <p className="text-[10px] mt-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                <Package size={10} />
+                Los lotes se crean automáticamente en Bodega Principal al registrar.
               </p>
             </div>
 
@@ -590,7 +647,7 @@ function OrdenCard({ orden, expandida, onToggle, onRecibir, onCerrar }: {
               <div key={item.id} className="flex justify-between items-center text-sm">
                 <span style={{ color: 'var(--text-main)' }}>{item.materia_prima}</span>
                 <span className="font-black" style={{ color: 'var(--primary)' }}>
-                  {formatNum(item.cantidad_solicitada)} {item.unidad_medida ?? ''}
+                  {formatCantidad(item.cantidad_solicitada, item.unidad_medida ?? '')}
                 </span>
               </div>
             ))}
