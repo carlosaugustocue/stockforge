@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { RefreshCw, ShoppingBag } from 'lucide-react';
 import { reportesService } from '@/services/reportes.service';
 import { formatNum } from '@/lib/utils';
+import Paginacion from '@/components/ui/Paginacion';
+
+const POR_PAGINA = 20;
 
 interface LotePt {
   lote_id: number;
@@ -25,10 +28,17 @@ export default function StockPtPage() {
   const [lotes,   setLotes]   = useState<LotePt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [pagina,  setPagina]  = useState(1);
+
+  const paginados = useMemo(() => {
+    const ini = (pagina - 1) * POR_PAGINA;
+    return lotes.slice(ini, ini + POR_PAGINA);
+  }, [lotes, pagina]);
 
   const cargar = () => {
     setLoading(true);
     setError('');
+    setPagina(1);
     reportesService.stockPt()
       .then(d => setLotes((d as StockPtResponse).detalle ?? []))
       .catch(e => setError(e.message ?? 'Error'))
@@ -93,7 +103,7 @@ export default function StockPtPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lotes.map(l => (
+                  {paginados.map(l => (
                     <tr key={l.lote_id} className="border-b border-black/5 hover:bg-black/2 transition-colors">
                       <td className="px-5 py-3 font-black" style={{ color: 'var(--text-muted)' }}>#{l.lote_id}</td>
                       <td className="px-5 py-3 font-bold" style={{ color: 'var(--text-main)' }}>{l.producto_terminado}</td>
@@ -113,6 +123,7 @@ export default function StockPtPage() {
               {lotes.length === 0 && (
                 <div className="text-center py-12 text-sm" style={{ color: 'var(--text-muted)' }}>No hay lotes de producto terminado.</div>
               )}
+              <Paginacion total={lotes.length} porPagina={POR_PAGINA} pagina={pagina} onChange={setPagina} />
             </div>
           </>
         )}

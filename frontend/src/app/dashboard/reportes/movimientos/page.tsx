@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { RefreshCw, Filter } from 'lucide-react';
 import { reportesService } from '@/services/reportes.service';
 import { formatNum } from '@/lib/utils';
+import Paginacion from '@/components/ui/Paginacion';
+
+const POR_PAGINA = 20;
 
 interface Movimiento {
   id: number;
@@ -34,10 +37,17 @@ export default function MovimientosPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
   const [tipo,        setTipo]        = useState('');
+  const [pagina,      setPagina]      = useState(1);
+
+  const paginados = useMemo(() => {
+    const ini = (pagina - 1) * POR_PAGINA;
+    return movimientos.slice(ini, ini + POR_PAGINA);
+  }, [movimientos, pagina]);
 
   const cargar = () => {
     setLoading(true);
     setError('');
+    setPagina(1);
     const params: Record<string, string> = {};
     if (tipo) params.tipo = tipo;
     reportesService.movimientos(params)
@@ -103,7 +113,7 @@ export default function MovimientosPage() {
                 </tr>
               </thead>
               <tbody>
-                {movimientos.map(m => (
+                {paginados.map(m => (
                   <tr key={m.id} className="border-b border-black/5 hover:bg-black/2 transition-colors">
                     <td className="px-5 py-3 font-black" style={{ color: 'var(--text-muted)' }}>#{m.id}</td>
                     <td className="px-5 py-3">
@@ -135,6 +145,7 @@ export default function MovimientosPage() {
             {movimientos.length === 0 && (
               <div className="text-center py-12 text-sm" style={{ color: 'var(--text-muted)' }}>No hay movimientos registrados.</div>
             )}
+            <Paginacion total={movimientos.length} porPagina={POR_PAGINA} pagina={pagina} onChange={setPagina} />
           </div>
         )}
     </div>

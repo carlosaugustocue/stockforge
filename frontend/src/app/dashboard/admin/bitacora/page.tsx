@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { RefreshCw, Filter } from 'lucide-react';
 import { adminService } from '@/services/admin.service';
+import Paginacion from '@/components/ui/Paginacion';
+
+const POR_PAGINA = 25;
 
 interface BitacoraEntry {
   id: number;
@@ -25,10 +28,17 @@ export default function BitacoraPage() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [accion,   setAccion]   = useState('');
+  const [pagina,   setPagina]   = useState(1);
+
+  const paginadas = useMemo(() => {
+    const ini = (pagina - 1) * POR_PAGINA;
+    return entradas.slice(ini, ini + POR_PAGINA);
+  }, [entradas, pagina]);
 
   const cargar = () => {
     setLoading(true);
     setError('');
+    setPagina(1);
     const params: Record<string, string> = {};
     if (accion) params.accion = accion;
     adminService.bitacora(params)
@@ -94,7 +104,7 @@ export default function BitacoraPage() {
                 </tr>
               </thead>
               <tbody>
-                {entradas.map(e => (
+                {paginadas.map(e => (
                   <tr key={e.id} className="border-b border-black/5 hover:bg-black/2 transition-colors">
                     <td className="px-5 py-3 font-black" style={{ color: 'var(--text-muted)' }}>{e.id}</td>
                     <td className="px-5 py-3">
@@ -116,6 +126,7 @@ export default function BitacoraPage() {
             {entradas.length === 0 && (
               <div className="text-center py-12 text-sm" style={{ color: 'var(--text-muted)' }}>No hay registros en la bitácora.</div>
             )}
+            <Paginacion total={entradas.length} porPagina={POR_PAGINA} pagina={pagina} onChange={setPagina} />
           </div>
         )}
     </div>
