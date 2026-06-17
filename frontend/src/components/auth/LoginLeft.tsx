@@ -29,13 +29,13 @@ export default function LoginLeft() {
       <div className="relative z-10 flex flex-col gap-8 animate-fade" style={{ animationDelay: '0.1s' }}>
 
         {/* Logo */}
-        <div className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-white/10 backdrop-blur-sm p-1.5">
-          <div className="w-full h-full rounded-xl overflow-hidden relative">
+        <div className="w-44 h-44 rounded-3xl overflow-hidden border border-white/25 shadow-[0_24px_64px_rgba(0,0,0,0.35)] bg-white/15 backdrop-blur-md p-4 flex items-center justify-center">
+          <div className="w-full h-full relative">
             <Image
               src="/logo/Logo-Daluzed-SF.png"
               alt="Pastelería Daluzed"
               fill
-              className="object-cover"
+              className="object-contain drop-shadow-xl"
               priority
             />
           </div>
