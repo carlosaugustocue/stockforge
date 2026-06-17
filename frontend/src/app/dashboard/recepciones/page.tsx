@@ -6,7 +6,7 @@ import { RefreshCw, Plus, PackageCheck, X, Trash2, Building2, Phone, Mail, Packa
 import { recepcionesService, type OrdenPedido } from '@/services/recepciones.service';
 import { proveedoresService, type Proveedor } from '@/services/proveedores.service';
 import { catalogoService, type MateriaPrima } from '@/services/catalogo.service';
-import { formatNum } from '@/lib/utils';
+import { formatCantidad } from '@/lib/utils';
 import { obtenerSesion } from '@/lib/session';
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -446,7 +446,7 @@ export default function RecepcionesPage() {
                   <div key={item.id} className="flex justify-between text-sm">
                     <span style={{ color: 'var(--text-main)' }}>{item.materia_prima}</span>
                     <span className="font-black" style={{ color: 'var(--primary)' }}>
-                      {formatNum(item.cantidad_solicitada)} {item.unidad_medida}
+                      {formatCantidad(item.cantidad_solicitada, item.unidad_medida)}
                     </span>
                   </div>
                 ))}
@@ -523,7 +523,7 @@ export default function RecepcionesPage() {
                           {itemSolicitado && (
                             <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
                               Solicitado: <strong style={{ color: 'var(--text-main)' }}>
-                                {formatNum(itemSolicitado.cantidad_solicitada)} {itemSolicitado.unidad_medida ?? unidad}
+                                {formatCantidad(itemSolicitado.cantidad_solicitada, itemSolicitado.unidad_medida ?? unidad)}
                               </strong>
                             </p>
                           )}
@@ -647,7 +647,7 @@ function OrdenCard({ orden, expandida, onToggle, onRecibir, onCerrar }: {
               <div key={item.id} className="flex justify-between items-center text-sm">
                 <span style={{ color: 'var(--text-main)' }}>{item.materia_prima}</span>
                 <span className="font-black" style={{ color: 'var(--primary)' }}>
-                  {formatNum(item.cantidad_solicitada)} {item.unidad_medida ?? ''}
+                  {formatCantidad(item.cantidad_solicitada, item.unidad_medida ?? '')}
                 </span>
               </div>
             ))}
