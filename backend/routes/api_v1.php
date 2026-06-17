@@ -207,6 +207,7 @@ Route::middleware(['auth:sanctum', 'permission:despachos.escribir'])->group(func
 // MÓDULO REPORTES — KPIs y reportes de gestión (reportes.leer)
 // -------------------------------------------------------------------------
 Route::middleware(['auth:sanctum', 'permission:reportes.leer'])->group(function () {
+    Route::get('/reportes/indicadores', [ReportesController::class, 'indicadores']);
     Route::get('/reportes/kpis',        [ReportesController::class, 'kpis']);
     Route::get('/reportes/produccion',  [ReportesController::class, 'produccion']);
     Route::get('/reportes/despachos',   [ReportesController::class, 'despachos']);

@@ -162,6 +162,105 @@ class ReportesService
     }
 
     /**
+     * Indicadores operativos de inventario para el dashboard de gestión.
+     *
+     * Calcula los 4 KPIs logísticos estándar más datos de tendencia para gráficos.
+     *
+     * 1. Rotación de inventario   = consumo_mp_mes / stock_actual_mp
+     * 2. Exactitud de inventario  = (MPs en nivel correcto / total MPs) × 100
+     * 3. Nivel de servicio        = (órdenes completadas / órdenes no anuladas) × 100
+     * 4. Utilización de almacén   = (lotes activos / total lotes) × 100
+     */
+    public function indicadoresOperativos(): array
+    {
+        $hoy  = now()->toDateString();
+        $mes  = now()->startOfMonth()->toDateString();
+        $hace6Meses = now()->subMonths(6)->startOfMonth()->toDateString();
+        $hace30Dias = now()->subDays(29)->toDateString();
+
+        // ── 1. Rotación de inventario ──────────────────────────────────────
+        $consumoMes  = $this->repo->consumoMpPeriodo($mes, $hoy);
+        $stockActual = $this->repo->stockActualMp();
+        $rotacion    = $stockActual > 0 ? round($consumoMes / $stockActual, 2) : 0.0;
+
+        // ── 2. Exactitud de inventario ─────────────────────────────────────
+        $totalMps = MateriaPrima::where('activa', true)->count();
+        $mpsBajoReorden = MateriaPrima::with('lotes')
+            ->where('activa', true)->get()
+            ->filter(fn($mp) => $mp->lotes->sum('cantidad_actual') < (float) $mp->punto_reorden)
+            ->count();
+        $exactitud = $totalMps > 0
+            ? round((($totalMps - $mpsBajoReorden) / $totalMps) * 100, 1)
+            : 100.0;
+
+        // ── 3. Nivel de servicio ───────────────────────────────────────────
+        $ordenes         = $this->repo->conteoOrdenesPorEstado();
+        $completadas     = $ordenes['completada'] ?? 0;
+        $noAnuladas      = ($ordenes['pendiente'] ?? 0) + ($ordenes['producido'] ?? 0) + $completadas;
+        $nivelServicio   = $noAnuladas > 0 ? round(($completadas / $noAnuladas) * 100, 1) : 100.0;
+
+        // ── 4. Utilización de almacén ──────────────────────────────────────
+        $totalLotes  = $this->repo->totalLotesMpCount();
+        $lotesActivos = $this->repo->lotesActivosMpCount();
+        $utilizacion = $totalLotes > 0 ? round(($lotesActivos / $totalLotes) * 100, 1) : 0.0;
+
+        // ── Datos para gráficos ────────────────────────────────────────────
+        $despachosLinea = $this->repo->despachosAgrupadosPorDia($hace30Dias, $hoy)
+            ->map(fn($r) => ['fecha' => $r->fecha, 'total' => (float) $r->total, 'num' => (int) $r->num_despachos])
+            ->values();
+
+        $produccionBarras = $this->repo->ordenesAgrupadasPorMes($hace6Meses, $hoy)
+            ->groupBy('mes')
+            ->map(fn($grupo, $mes) => [
+                'mes'        => $mes,
+                'completada' => (int) ($grupo->firstWhere('estado', 'completada')?->total ?? 0),
+                'producido'  => (int) ($grupo->firstWhere('estado', 'producido')?->total ?? 0),
+                'pendiente'  => (int) ($grupo->firstWhere('estado', 'pendiente')?->total ?? 0),
+                'anulada'    => (int) ($grupo->firstWhere('estado', 'anulada')?->total ?? 0),
+            ])->values();
+
+        $distribucionOrdenes = collect($ordenes)->map(fn($total, $estado) => [
+            'estado' => $estado,
+            'total'  => (int) $total,
+        ])->values();
+
+        return [
+            'indicadores' => [
+                'rotacion_inventario' => [
+                    'valor'       => $rotacion,
+                    'unidad'      => 'veces',
+                    'descripcion' => 'Consumo MP / Stock actual. Mayor = mayor flujo.',
+                    'estado'      => $rotacion >= 1.5 ? 'bueno' : ($rotacion >= 0.5 ? 'medio' : 'bajo'),
+                ],
+                'exactitud_inventario' => [
+                    'valor'       => $exactitud,
+                    'unidad'      => '%',
+                    'descripcion' => 'MPs en nivel correcto vs total MPs activas.',
+                    'estado'      => $exactitud >= 80 ? 'bueno' : ($exactitud >= 60 ? 'medio' : 'bajo'),
+                ],
+                'nivel_servicio' => [
+                    'valor'       => $nivelServicio,
+                    'unidad'      => '%',
+                    'descripcion' => 'Órdenes completadas vs órdenes no anuladas.',
+                    'estado'      => $nivelServicio >= 85 ? 'bueno' : ($nivelServicio >= 70 ? 'medio' : 'bajo'),
+                ],
+                'utilizacion_almacen' => [
+                    'valor'       => $utilizacion,
+                    'unidad'      => '%',
+                    'descripcion' => 'Lotes MP activos vs total lotes registrados.',
+                    'estado'      => $utilizacion >= 50 ? 'bueno' : ($utilizacion >= 25 ? 'medio' : 'bajo'),
+                ],
+            ],
+            'graficos' => [
+                'despachos_30d'         => $despachosLinea,
+                'produccion_6m'         => $produccionBarras,
+                'distribucion_ordenes'  => $distribucionOrdenes,
+            ],
+            'periodo' => ['desde' => $mes, 'hasta' => $hoy],
+        ];
+    }
+
+    /**
      * Stock actual de PT disponible para despacho.
      *
      * Solo lotes en bodega tipo 'ventas' con cantidad_actual > 0.
