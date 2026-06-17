@@ -2482,6 +2482,32 @@
                 ]
             }
         },
+        "/reportes/indicadores": {
+            "get": {
+                "tags": [
+                    "Reportes"
+                ],
+                "summary": "Indicadores operativos de inventario",
+                "description": "Retorna los 4 KPIs logísticos (rotación, exactitud, nivel de servicio, utilización) más datos de tendencia para gráficos interactivos.",
+                "operationId": "09eb630f7748bb4ef1c5246555d27e61",
+                "responses": {
+                    "200": {
+                        "description": "Indicadores calculados con datos para gráficos"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "403": {
+                        "description": "Sin permiso (requiere reportes.leer)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/reportes/kpis": {
             "get": {
                 "tags": [

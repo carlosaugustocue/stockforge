@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
  * ReportesController — Endpoints de lectura agregada para gestión y dashboard.
  *
  * GET /reportes/kpis            → kpis           (indicadores globales del mes actual)
+ * GET /reportes/indicadores     → indicadores    (4 KPIs operativos + datos para gráficos)
  * GET /reportes/produccion      → produccion      (órdenes por período)
  * GET /reportes/despachos       → despachos       (salidas por período)
  * GET /reportes/movimientos     → movimientos     (historial de inventario)
@@ -27,6 +28,23 @@ class ReportesController extends Controller
     public function __construct(
         private readonly ReportesService $service,
     ) {}
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/indicadores",
+     *     summary="Indicadores operativos de inventario",
+     *     description="Retorna los 4 KPIs logísticos (rotación, exactitud, nivel de servicio, utilización) más datos de tendencia para gráficos interactivos.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(response=200, description="Indicadores calculados con datos para gráficos"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere reportes.leer)")
+     * )
+     */
+    public function indicadores(): JsonResponse
+    {
+        return $this->successResponse($this->service->indicadoresOperativos(), 'Indicadores operativos del sistema.');
+    }
 
     /**
      * @OA\Get(

@@ -78,4 +78,47 @@ class ReportesRepository implements ReportesRepositoryInterface
             ->orderBy('fecha_produccion')
             ->get();
     }
+
+    public function consumoMpPeriodo(string $desde, string $hasta): float
+    {
+        return (float) MovimientoInventario::where('tipo', 'CONSUMO_MP')
+            ->whereDate('created_at', '>=', $desde)
+            ->whereDate('created_at', '<=', $hasta)
+            ->sum('cantidad');
+    }
+
+    public function stockActualMp(): float
+    {
+        return (float) LoteMateriaPrima::sum('cantidad_actual');
+    }
+
+    public function lotesActivosMpCount(): int
+    {
+        return LoteMateriaPrima::where('cantidad_actual', '>', 0)->count();
+    }
+
+    public function totalLotesMpCount(): int
+    {
+        return LoteMateriaPrima::count();
+    }
+
+    public function despachosAgrupadosPorDia(string $desde, string $hasta): Collection
+    {
+        return Despacho::selectRaw('DATE(created_at) as fecha, SUM(cantidad) as total, COUNT(*) as num_despachos')
+            ->whereDate('created_at', '>=', $desde)
+            ->whereDate('created_at', '<=', $hasta)
+            ->groupByRaw('DATE(created_at)')
+            ->orderBy('fecha')
+            ->get();
+    }
+
+    public function ordenesAgrupadasPorMes(string $desde, string $hasta): Collection
+    {
+        return OrdenProduccion::selectRaw("DATE_FORMAT(fecha_planificada, '%Y-%m') as mes, estado, COUNT(*) as total")
+            ->whereDate('fecha_planificada', '>=', $desde)
+            ->whereDate('fecha_planificada', '<=', $hasta)
+            ->groupByRaw("DATE_FORMAT(fecha_planificada, '%Y-%m'), estado")
+            ->orderBy('mes')
+            ->get();
+    }
 }
