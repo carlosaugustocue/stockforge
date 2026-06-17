@@ -21,7 +21,8 @@ interface TrasladoAudit {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtNum(n: number): string {
-  return n % 1 === 0 ? String(n) : n.toLocaleString('es-CO', { maximumFractionDigits: 3 });
+  const r = Math.round(n * 100) / 100;
+  return r % 1 === 0 ? r.toLocaleString('es-CO') : r.toLocaleString('es-CO', { maximumFractionDigits: 2 });
 }
 function fmtFechaHora(iso: string): string {
   const d = new Date(iso);
