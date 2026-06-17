@@ -20,8 +20,22 @@ interface Rol {
 const ROL_LABEL: Record<string, string> = {
   administrador:         'Administrador',
   gerencia:              'Gerencia',
-  jefe_produccion:       'Jefe Producción',
-  encargado_inventarios: 'Encargado',
+  jefe_produccion:       'Jefe de Producción',
+  encargado_inventarios: 'Enc. Inventarios',
+};
+
+const RECURSO_LABEL: Record<string, string> = {
+  materias_primas:      'Materias Primas',
+  productos_terminados: 'Productos Terminados',
+  bodegas:              'Bodegas',
+  inventario:           'Inventario y Movimientos de Stock',
+  produccion:           'Producción',
+  recepciones:          'Recepciones de Mercancía',
+  despachos:            'Despachos a Clientes',
+  alertas:              'Alertas de Stock',
+  reportes:             'Reportes y Estadísticas',
+  permisos:             'Administración del Sistema — Permisos',
+  usuarios:             'Administración del Sistema — Usuarios',
 };
 
 export default function PermisosPage() {
@@ -99,7 +113,7 @@ export default function PermisosPage() {
             Matriz de Permisos
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            Gestión dinámica de permisos por rol (RBAC)
+            Define qué puede ver y hacer cada rol en el sistema
           </p>
         </div>
         <button onClick={cargar} disabled={loading}
@@ -136,16 +150,18 @@ export default function PermisosPage() {
                       <td colSpan={roles.length + 1}
                         className="px-5 py-2 text-[9px] font-black uppercase tracking-widest bg-black/3"
                         style={{ color: 'var(--text-muted)', backgroundColor: 'rgba(0,0,0,0.03)' }}>
-                        {recurso.replace(/_/g, ' ')}
+                        {RECURSO_LABEL[recurso] ?? recurso.replace(/_/g, ' ')}
                       </td>
                     </tr>
                     {perms.map(p => (
                       <tr key={p.id} className="border-b border-black/5 hover:bg-black/2 transition-colors">
                         <td className="px-5 py-3">
-                          <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{p.nombre}</p>
-                          {p.descripcion && (
-                            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.descripcion}</p>
-                          )}
+                          <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>
+                            {p.descripcion ?? p.nombre}
+                          </p>
+                          <p className="text-[10px] mt-0.5 font-mono" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
+                            {p.nombre}
+                          </p>
                         </td>
                         {roles.map(r => {
                           const tiene = matriz[r.id]?.has(p.id) ?? false;
