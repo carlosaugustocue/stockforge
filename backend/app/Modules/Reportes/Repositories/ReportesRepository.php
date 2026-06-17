@@ -7,6 +7,7 @@ use App\Models\LoteMateriaPrima;
 use App\Models\LoteProductoTerminado;
 use App\Models\MovimientoInventario;
 use App\Models\OrdenProduccion;
+use App\Models\Recepcion;
 use App\Modules\Reportes\Repositories\Contracts\ReportesRepositoryInterface;
 use Illuminate\Support\Collection;
 
@@ -119,6 +120,76 @@ class ReportesRepository implements ReportesRepositoryInterface
             ->whereDate('fecha_planificada', '<=', $hasta)
             ->groupByRaw("DATE_FORMAT(fecha_planificada, '%Y-%m'), estado")
             ->orderBy('mes')
+            ->get();
+    }
+
+    // ── Auditoría ─────────────────────────────────────────────────────────────
+
+    public function auditRecepciones(?string $desde, ?string $hasta): Collection
+    {
+        return Recepcion::with([
+            'ordenPedido',
+            'usuario',
+            'lotes.materiaPrima.unidadMedida',
+            'lotes.bodega',
+        ])
+            ->when($desde, fn($q) => $q->whereDate('created_at', '>=', $desde))
+            ->when($hasta, fn($q) => $q->whereDate('created_at', '<=', $hasta))
+            ->latest()
+            ->get();
+    }
+
+    public function auditProducciones(?string $desde, ?string $hasta): Collection
+    {
+        return OrdenProduccion::with([
+            'productoTerminado.unidadMedida',
+            'usuario',
+            'requerimientos.materiaPrima.unidadMedida',
+            'loteProductoTerminado.bodega',
+        ])
+            ->when($desde, fn($q) => $q->whereDate('fecha_planificada', '>=', $desde))
+            ->when($hasta, fn($q) => $q->whereDate('fecha_planificada', '<=', $hasta))
+            ->latest()
+            ->get();
+    }
+
+    public function auditProduccionDetalle(int $id): ?object
+    {
+        return OrdenProduccion::with([
+            'productoTerminado.unidadMedida',
+            'usuario',
+            'requerimientos.materiaPrima.unidadMedida',
+            'loteProductoTerminado.bodega',
+        ])->find($id);
+    }
+
+    public function auditDespachos(?string $desde, ?string $hasta): Collection
+    {
+        return Despacho::with([
+            'usuario',
+            'cliente',
+            'lotePt.productoTerminado.unidadMedida',
+            'lotePt.bodega',
+            'lotePt.ordenProduccion.usuario',
+        ])
+            ->when($desde, fn($q) => $q->whereDate('created_at', '>=', $desde))
+            ->when($hasta, fn($q) => $q->whereDate('created_at', '<=', $hasta))
+            ->latest()
+            ->get();
+    }
+
+    public function auditTrasladosMp(?string $desde, ?string $hasta): Collection
+    {
+        return MovimientoInventario::with(['bodega', 'usuario'])
+            ->whereIn('tipo', [
+                MovimientoInventario::TIPO_TRASLADO_SALIDA,
+                MovimientoInventario::TIPO_TRASLADO_ENTRADA,
+            ])
+            ->where('entidad_tipo', MovimientoInventario::ENTIDAD_MATERIA_PRIMA)
+            ->when($desde, fn($q) => $q->whereDate('created_at', '>=', $desde))
+            ->when($hasta, fn($q) => $q->whereDate('created_at', '<=', $hasta))
+            ->latest()
+            ->orderByDesc('id')
             ->get();
     }
 }

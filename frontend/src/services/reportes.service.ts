@@ -87,4 +87,28 @@ export const reportesService = {
 
   stockPt: () =>
     apiFetch<{ data: unknown }>('/reportes/stock-pt').then(unwrap),
+
+  // ── Auditoría ──────────────────────────────────────────────────────────────
+  auditRecepciones: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/recepciones${qs}`).then(unwrap);
+  },
+
+  auditProducciones: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/producciones${qs}`).then(unwrap);
+  },
+
+  auditProduccionDetalle: (id: number) =>
+    apiFetch<{ data: unknown }>(`/reportes/auditoria/producciones/${id}`).then(unwrap),
+
+  auditDespachos: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/despachos${qs}`).then(unwrap);
+  },
+
+  auditTrasladosMp: (desde?: string, hasta?: string) => {
+    const qs = desde ? `?fecha_desde=${desde}&fecha_hasta=${hasta ?? ''}` : '';
+    return apiFetch<{ data: unknown }>(`/reportes/auditoria/traslados-mp${qs}`).then(unwrap);
+  },
 };

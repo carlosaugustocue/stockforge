@@ -213,6 +213,13 @@ Route::middleware(['auth:sanctum', 'permission:reportes.leer'])->group(function 
     Route::get('/reportes/despachos',   [ReportesController::class, 'despachos']);
     Route::get('/reportes/movimientos', [ReportesController::class, 'movimientos']);
     Route::get('/reportes/stock-pt',    [ReportesController::class, 'stockPt']);
+
+    // Auditoría detallada por tipo de operación
+    Route::get('/reportes/auditoria/recepciones',          [ReportesController::class, 'auditRecepciones']);
+    Route::get('/reportes/auditoria/producciones',         [ReportesController::class, 'auditProducciones']);
+    Route::get('/reportes/auditoria/producciones/{id}',    [ReportesController::class, 'auditProduccionDetalle']);
+    Route::get('/reportes/auditoria/despachos',            [ReportesController::class, 'auditDespachos']);
+    Route::get('/reportes/auditoria/traslados-mp',         [ReportesController::class, 'auditTrasladosMp']);
 });
 
 // -------------------------------------------------------------------------

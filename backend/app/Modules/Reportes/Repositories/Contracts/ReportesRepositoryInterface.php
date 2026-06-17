@@ -44,4 +44,21 @@ interface ReportesRepositoryInterface
 
     /** Órdenes de producción agrupadas por mes (para gráfico de tendencia) */
     public function ordenesAgrupadasPorMes(string $desde, string $hasta): Collection;
+
+    // ── Auditoría ─────────────────────────────────────────────────────────────
+
+    /** Recepciones con proveedor (vía orden_pedido) y lotes creados */
+    public function auditRecepciones(?string $desde, ?string $hasta): Collection;
+
+    /** Órdenes de producción con requerimientos de MP y movimientos CONSUMO_MP */
+    public function auditProducciones(?string $desde, ?string $hasta): Collection;
+
+    /** Detalle completo de una orden de producción con CONSUMO_MP por lote */
+    public function auditProduccionDetalle(int $id): ?object;
+
+    /** Despachos con trazabilidad completa: cliente → PT → orden → MP */
+    public function auditDespachos(?string $desde, ?string $hasta): Collection;
+
+    /** Traslados de MP con lote, materia prima, bodega origen y destino */
+    public function auditTrasladosMp(?string $desde, ?string $hasta): Collection;
 }

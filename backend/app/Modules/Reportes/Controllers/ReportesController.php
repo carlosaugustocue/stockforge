@@ -148,4 +148,121 @@ class ReportesController extends Controller
     {
         return $this->successResponse($this->service->stockPt(), 'Stock de PT disponible para despacho.');
     }
+
+    // ── Auditoría ─────────────────────────────────────────────────────────────
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/auditoria/recepciones",
+     *     summary="Auditoría de recepciones de MP",
+     *     description="Recepciones con proveedor, lotes creados y usuario responsable. Trazabilidad RFREC / HU-026.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="fecha_desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="fecha_hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Lista de recepciones con detalle de lotes y proveedor"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso (requiere reportes.leer)")
+     * )
+     */
+    public function auditRecepciones(Request $request): JsonResponse
+    {
+        $data = $this->service->auditRecepciones(
+            $request->query('fecha_desde'),
+            $request->query('fecha_hasta'),
+        );
+        return $this->successResponse($data, 'Auditoría de recepciones.');
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/auditoria/producciones",
+     *     summary="Auditoría de órdenes de producción",
+     *     description="Órdenes con ingredientes planificados, eficiencia real y PT resultante. RFPROD01-03.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="fecha_desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="fecha_hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Lista de órdenes con ingredientes y PT"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
+    public function auditProducciones(Request $request): JsonResponse
+    {
+        $data = $this->service->auditProducciones(
+            $request->query('fecha_desde'),
+            $request->query('fecha_hasta'),
+        );
+        return $this->successResponse($data, 'Auditoría de producciones.');
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/auditoria/producciones/{id}",
+     *     summary="Detalle completo de una orden de producción",
+     *     description="Ingredientes planificados vs consumo real de MP por lote (FEFO). RFPROD05.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Detalle con consumo real de MP por lote"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso"),
+     *     @OA\Response(response=404, description="Orden no encontrada")
+     * )
+     */
+    public function auditProduccionDetalle(int $id): JsonResponse
+    {
+        $data = $this->service->auditProduccionDetalle($id);
+        if (! $data) {
+            return $this->errorResponse('Orden de producción no encontrada.', 404);
+        }
+        return $this->successResponse($data, 'Detalle de auditoría de producción.');
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/auditoria/despachos",
+     *     summary="Auditoría de despachos",
+     *     description="Despachos con trazabilidad completa: cliente → PT → orden de producción. HU-027.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="fecha_desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="fecha_hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Lista de despachos con trazabilidad"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
+    public function auditDespachos(Request $request): JsonResponse
+    {
+        $data = $this->service->auditDespachos(
+            $request->query('fecha_desde'),
+            $request->query('fecha_hasta'),
+        );
+        return $this->successResponse($data, 'Auditoría de despachos.');
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/reportes/auditoria/traslados-mp",
+     *     summary="Auditoría de traslados de MP",
+     *     description="Traslados de materias primas entre bodegas con bodega origen, destino y usuario. RFINV04.",
+     *     tags={"Reportes"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(name="fecha_desde", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="fecha_hasta", in="query", required=false, @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Lista de traslados de MP"),
+     *     @OA\Response(response=401, description="No autenticado"),
+     *     @OA\Response(response=403, description="Sin permiso")
+     * )
+     */
+    public function auditTrasladosMp(Request $request): JsonResponse
+    {
+        $data = $this->service->auditTrasladosMp(
+            $request->query('fecha_desde'),
+            $request->query('fecha_hasta'),
+        );
+        return $this->successResponse($data, 'Auditoría de traslados de MP.');
+    }
 }

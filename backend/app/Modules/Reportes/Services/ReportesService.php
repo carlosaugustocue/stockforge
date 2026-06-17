@@ -5,6 +5,7 @@ namespace App\Modules\Reportes\Services;
 use App\Models\MateriaPrima;
 use App\Models\MovimientoInventario;
 use App\Modules\Reportes\Repositories\Contracts\ReportesRepositoryInterface;
+use Illuminate\Support\Collection;
 
 /**
  * ReportesService — Agrega y formatea datos para los reportes del sistema.
@@ -258,6 +259,256 @@ class ReportesService
             ],
             'periodo' => ['desde' => $mes, 'hasta' => $hoy],
         ];
+    }
+
+    // ── Auditoría ─────────────────────────────────────────────────────────────
+
+    /**
+     * Auditoría de recepciones: MP recibida con proveedor, lotes y usuario.
+     *
+     * HU-026 — Trazabilidad por lote desde recepción hasta consumo/despacho.
+     */
+    public function auditRecepciones(?string $desde, ?string $hasta): array
+    {
+        $recepciones = $this->repo->auditRecepciones($desde, $hasta);
+
+        return $recepciones->map(fn($r) => [
+            'id'           => $r->id,
+            'registrada_en'=> $r->created_at->toDateTimeString(),
+            'usuario'      => $r->usuario?->name,
+            'observaciones'=> $r->observaciones,
+            'proveedor'    => $r->ordenPedido?->proveedor ?? '—',
+            'orden_pedido' => $r->ordenPedido ? [
+                'id'             => $r->ordenPedido->id,
+                'estado'         => $r->ordenPedido->estado,
+                'fecha_esperada' => $r->ordenPedido->fecha_esperada?->toDateString(),
+            ] : null,
+            'lotes'        => $r->lotes->map(fn($l) => [
+                'lote_id'          => $l->id,
+                'materia_prima'    => $l->materiaPrima?->nombre,
+                'unidad_medida'    => $l->materiaPrima?->unidadMedida?->nombre,
+                'bodega'           => $l->bodega?->nombre,
+                'cantidad_inicial' => (float) $l->cantidad_inicial,
+                'cantidad_actual'  => (float) $l->cantidad_actual,
+                'consumido_pct'    => $l->cantidad_inicial > 0
+                    ? round((1 - $l->cantidad_actual / $l->cantidad_inicial) * 100, 1)
+                    : 0,
+                'fecha_vencimiento'=> $l->fecha_vencimiento?->toDateString(),
+                'fecha_ingreso'    => $l->fecha_ingreso->toDateTimeString(),
+            ])->values(),
+            'total_lotes'  => $r->lotes->count(),
+            'total_mp_unidades' => round($r->lotes->sum(fn($l) => (float) $l->cantidad_inicial), 3),
+        ])->values()->toArray();
+    }
+
+    /**
+     * Auditoría de producciones: órdenes con ingredientes planificados y PT resultante.
+     *
+     * RFPROD01-03 — Ciclo productivo completo con trazabilidad de MP.
+     */
+    public function auditProducciones(?string $desde, ?string $hasta): array
+    {
+        $ordenes = $this->repo->auditProducciones($desde, $hasta);
+
+        return $ordenes->map(fn($o) => [
+            'id'                   => $o->id,
+            'estado'               => $o->estado,
+            'producto_terminado'   => $o->productoTerminado?->nombre,
+            'unidad_medida'        => $o->productoTerminado?->unidadMedida?->nombre,
+            'cantidad_planificada' => (float) $o->cantidad_planificada,
+            'cantidad_producida'   => $o->cantidad_producida !== null ? (float) $o->cantidad_producida : null,
+            'eficiencia_pct'       => $o->cantidad_producida && $o->cantidad_planificada
+                ? round((float) $o->cantidad_producida / (float) $o->cantidad_planificada * 100, 1)
+                : null,
+            'fecha_planificada'    => $o->fecha_planificada?->toDateString(),
+            'usuario'              => $o->usuario?->name,
+            'creada_en'            => $o->created_at->toDateTimeString(),
+            'ingredientes'         => $o->requerimientos->map(fn($req) => [
+                'materia_prima'      => $req->materiaPrima?->nombre,
+                'unidad_medida'      => $req->materiaPrima?->unidadMedida?->nombre,
+                'cantidad_requerida' => (float) $req->cantidad_requerida,
+            ])->values(),
+            'lote_pt'              => $o->loteProductoTerminado ? [
+                'lote_id'         => $o->loteProductoTerminado->id,
+                'bodega'          => $o->loteProductoTerminado->bodega?->nombre,
+                'cantidad_actual' => (float) $o->loteProductoTerminado->cantidad_actual,
+                'fecha_produccion'=> $o->loteProductoTerminado->fecha_produccion?->toDateString(),
+            ] : null,
+        ])->values()->toArray();
+    }
+
+    /**
+     * Detalle completo de una orden de producción con consumo real de MP por lote.
+     *
+     * Combina los requerimientos planificados con los movimientos CONSUMO_MP reales.
+     */
+    public function auditProduccionDetalle(int $id): ?array
+    {
+        $orden = $this->repo->auditProduccionDetalle($id);
+        if (! $orden) {
+            return null;
+        }
+
+        // Consumos reales: movimientos CONSUMO_MP de esta orden
+        $consumos = MovimientoInventario::with(['bodega', 'usuario'])
+            ->where('tipo', MovimientoInventario::TIPO_CONSUMO_MP)
+            ->where('orden_produccion_id', $id)
+            ->orderBy('id')
+            ->get();
+
+        // Agrupar consumos por entidad_id (lote_mp) → con materia prima
+        $lotesConsumo = $consumos->map(function ($m) {
+            $lote = \App\Models\LoteMateriaPrima::with('materiaPrima.unidadMedida')->find($m->entidad_id);
+            return [
+                'movimiento_id'  => $m->id,
+                'lote_mp_id'     => $m->entidad_id,
+                'materia_prima'  => $lote?->materiaPrima?->nombre ?? "Lote #{$m->entidad_id}",
+                'unidad_medida'  => $lote?->materiaPrima?->unidadMedida?->nombre,
+                'bodega'         => $m->bodega?->nombre,
+                'cantidad'       => (float) $m->cantidad,
+                'fecha'          => $m->created_at->toDateTimeString(),
+                'usuario'        => $m->usuario?->name,
+            ];
+        })->values();
+
+        // Agrupar por materia prima para mostrar totales reales
+        $consumoAgrupado = $lotesConsumo
+            ->groupBy('materia_prima')
+            ->map(fn($grupo, $mp) => [
+                'materia_prima'    => $mp,
+                'unidad_medida'    => $grupo->first()['unidad_medida'],
+                'total_consumido'  => round($grupo->sum('cantidad'), 3),
+                'lotes_usados'     => $grupo->count(),
+                'detalle_lotes'    => $grupo->values(),
+            ])->values();
+
+        return [
+            'id'                   => $orden->id,
+            'estado'               => $orden->estado,
+            'producto_terminado'   => $orden->productoTerminado?->nombre,
+            'unidad_medida'        => $orden->productoTerminado?->unidadMedida?->nombre,
+            'cantidad_planificada' => (float) $orden->cantidad_planificada,
+            'cantidad_producida'   => $orden->cantidad_producida !== null ? (float) $orden->cantidad_producida : null,
+            'eficiencia_pct'       => $orden->cantidad_producida && $orden->cantidad_planificada
+                ? round((float) $orden->cantidad_producida / (float) $orden->cantidad_planificada * 100, 1)
+                : null,
+            'fecha_planificada'    => $orden->fecha_planificada?->toDateString(),
+            'usuario'              => $orden->usuario?->name,
+            'creada_en'            => $orden->created_at->toDateTimeString(),
+            'ingredientes_planificados' => $orden->requerimientos->map(fn($req) => [
+                'materia_prima'      => $req->materiaPrima?->nombre,
+                'unidad_medida'      => $req->materiaPrima?->unidadMedida?->nombre,
+                'cantidad_requerida' => (float) $req->cantidad_requerida,
+            ])->values(),
+            'consumo_real'         => $consumoAgrupado,
+            'lote_pt'              => $orden->loteProductoTerminado ? [
+                'lote_id'         => $orden->loteProductoTerminado->id,
+                'bodega'          => $orden->loteProductoTerminado->bodega?->nombre,
+                'cantidad_actual' => (float) $orden->loteProductoTerminado->cantidad_actual,
+                'fecha_produccion'=> $orden->loteProductoTerminado->fecha_produccion?->toDateString(),
+            ] : null,
+        ];
+    }
+
+    /**
+     * Auditoría de despachos con trazabilidad completa hasta la producción.
+     *
+     * HU-027 — Trazabilidad: proveedor → MP → producción → PT → cliente.
+     */
+    public function auditDespachos(?string $desde, ?string $hasta): array
+    {
+        $despachos = $this->repo->auditDespachos($desde, $hasta);
+
+        return $despachos->map(fn($d) => [
+            'id'                 => $d->id,
+            'despachado_en'      => $d->created_at->toDateTimeString(),
+            'usuario'            => $d->usuario?->name,
+            'cantidad'           => (float) $d->cantidad,
+            'cliente'            => $d->cliente ? [
+                'id'     => $d->cliente->id,
+                'nombre' => $d->cliente->nombre,
+                'tipo'   => $d->cliente->tipo,
+                'nit'    => $d->cliente->nit_cedula,
+            ] : ['nombre' => $d->referencia_cliente ?? '—', 'id' => null, 'tipo' => null, 'nit' => null],
+            'producto_terminado' => $d->lotePt?->productoTerminado?->nombre,
+            'unidad_medida'      => $d->lotePt?->productoTerminado?->unidadMedida?->nombre,
+            'lote_pt'            => $d->lotePt ? [
+                'lote_id'         => $d->lotePt->id,
+                'bodega'          => $d->lotePt->bodega?->nombre,
+                'fecha_produccion'=> $d->lotePt->fecha_produccion?->toDateString(),
+                'stock_restante'  => (float) $d->lotePt->cantidad_actual,
+            ] : null,
+            'orden_produccion'   => $d->lotePt?->orden_produccion_id ? [
+                'id'      => $d->lotePt->orden_produccion_id,
+                'usuario' => $d->lotePt?->ordenProduccion?->usuario?->name,
+            ] : null,
+            'referencia_cliente' => $d->referencia_cliente,
+        ])->values()->toArray();
+    }
+
+    /**
+     * Auditoría de traslados de MP entre bodegas.
+     *
+     * RFINV04 — Traslados de MP son operaciones inmutables registradas como movimientos.
+     * Retorna pares TRASLADO_SALIDA + TRASLADO_ENTRADA agrupados por fecha/usuario/lote.
+     */
+    public function auditTrasladosMp(?string $desde, ?string $hasta): array
+    {
+        $movimientos = $this->repo->auditTrasladosMp($desde, $hasta);
+
+        // Enriquecer cada movimiento con info del lote de MP
+        $detalle = $movimientos->map(function ($m) {
+            $lote = \App\Models\LoteMateriaPrima::with('materiaPrima.unidadMedida')->find($m->entidad_id);
+            return [
+                'movimiento_id'  => $m->id,
+                'tipo'           => $m->tipo,
+                'lote_mp_id'     => $m->entidad_id,
+                'materia_prima'  => $lote?->materiaPrima?->nombre ?? "Lote #{$m->entidad_id}",
+                'unidad_medida'  => $lote?->materiaPrima?->unidadMedida?->nombre,
+                'bodega'         => $m->bodega?->nombre,
+                'cantidad'       => (float) $m->cantidad,
+                'usuario'        => $m->usuario?->name,
+                'fecha'          => $m->created_at->toDateTimeString(),
+            ];
+        });
+
+        // Agrupar pares SALIDA ↔ ENTRADA por lote + usuario + fecha (bucket de 60s)
+        $traslados = [];
+        $procesados = [];
+
+        foreach ($detalle->where('tipo', 'TRASLADO_SALIDA') as $salida) {
+            if (in_array($salida['movimiento_id'], $procesados)) {
+                continue;
+            }
+            // Buscar la ENTRADA correspondiente: mismo lote, mismo usuario, próxima en tiempo
+            $entrada = $detalle
+                ->where('tipo', 'TRASLADO_ENTRADA')
+                ->where('lote_mp_id', $salida['lote_mp_id'])
+                ->where('usuario', $salida['usuario'])
+                ->filter(fn($e) => abs(
+                    strtotime($e['fecha']) - strtotime($salida['fecha'])
+                ) <= 5)
+                ->first();
+
+            $traslados[] = [
+                'id'            => $salida['movimiento_id'],
+                'fecha'         => $salida['fecha'],
+                'usuario'       => $salida['usuario'],
+                'lote_mp_id'    => $salida['lote_mp_id'],
+                'materia_prima' => $salida['materia_prima'],
+                'unidad_medida' => $salida['unidad_medida'],
+                'cantidad'      => $salida['cantidad'],
+                'bodega_origen' => $salida['bodega'],
+                'bodega_destino'=> $entrada ? $entrada['bodega'] : null,
+            ];
+
+            $procesados[] = $salida['movimiento_id'];
+            if ($entrada) {
+                $procesados[] = $entrada['movimiento_id'];
+            }
+        }
+
+        return $traslados;
     }
 
     /**
