@@ -69,8 +69,8 @@ export default function StockPtPage() {
 
   useEffect(() => { cargar(); }, []);
 
-  const lotes      = data?.detalle      ?? [];
-  const porProducto = data?.por_producto ?? [];
+  const lotes       = useMemo(() => data?.detalle      ?? [], [data]);
+  const porProducto = useMemo(() => data?.por_producto ?? [], [data]);
 
   // Agrupar lotes por producto
   const grupos = useMemo(() => {
@@ -98,7 +98,7 @@ export default function StockPtPage() {
   const toggleExpand = (prod: string) =>
     setExpand(prev => {
       const next = new Set(prev);
-      next.has(prod) ? next.delete(prod) : next.add(prod);
+      if (next.has(prod)) { next.delete(prod); } else { next.add(prod); }
       return next;
     });
 

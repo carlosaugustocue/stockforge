@@ -108,7 +108,7 @@ export default function MovimientosPage() {
 
   useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const movimientos = data?.detalle ?? [];
+  const movimientos = useMemo(() => data?.detalle ?? [], [data]);
 
   // Filtro local por búsqueda (bodega o usuario)
   const filtrados = useMemo(() => {
