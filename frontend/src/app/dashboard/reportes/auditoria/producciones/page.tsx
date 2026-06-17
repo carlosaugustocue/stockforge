@@ -138,12 +138,12 @@ export default function AuditoriaProduccionesPage() {
       {/* Filtros */}
       <div className="rounded-xl border-2 border-black/5 p-4" style={{ background: 'var(--bg-left)' }}>
         <div className="flex flex-wrap gap-3 items-end">
-          {[['Desde', desde, setDesde], ['Hasta', hasta, setHasta]].map(([label, val, setter]) => (
-            <div key={String(label)} className="flex flex-col gap-1">
+          {([['Desde', desde, setDesde], ['Hasta', hasta, setHasta]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+            <div key={label} className="flex flex-col gap-1">
               <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{label}</label>
               <div className="relative">
                 <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                <input type="date" value={String(val)} onChange={e => (setter as (v: string) => void)(e.target.value)}
+                <input type="date" value={val} onChange={e => setter(e.target.value)}
                   className="pl-8 pr-3 py-2 rounded-lg border-2 border-black/10 text-xs focus:outline-none focus:border-[var(--primary)] transition-colors"
                   style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }} />
               </div>
